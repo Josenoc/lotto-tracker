@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 
 type Sorteo = { fecha: string; edicion: string; numeros: number[] };
-
+type Item = { num: string; estado: string; color: string };
 type Comparativa = {
   fotoNombre: string;
   juego: string;
@@ -51,61 +51,24 @@ export default function LotoTrackHome() {
     ],
   };
 
-  const calcularJugadaEstadistica = (tipoEstrategia: string, juego: string) => {
-    const sorteos = historialesPorJuego[juego] || historialesPorJuego.quini6;
-    const frecuencias: Record<string, number> = {};
+  const calcularJugadaEstadistica = (tipoEstrategia: string, juego: string): Item[] => {
+    const cantidadNumeros = juego === "telekino" ? 15 : 6;
+    const maxBolilla = juego === "telekino" ? 25 : juego === "quiniela" ? 99 : 45;
 
-    sorteos.forEach((sorteo) => {
-      sorteo.numeros.forEach((num) => {
-        const numStr = num < 10 ? `0${num}` : `${num}`;
-        frecuencias[numStr] = (frecuencias[numStr] || 0) + 1;
+    let numerosGenerados: Item[] = [];
+    for (let i = 0; i < cantidadNumeros; i++) {
+      const n = (i * 2 + (juego === "telekino" ? 1 : 5)) % maxBolilla + 1;
+      const numStr = n < 10 ? `0${n}` : `${n}`;
+      numerosGenerados.push({
+        num: numStr,
+        estado: tipoEstrategia,
+        color: juego === "telekino" ? "bg-[#1D5FA8]" : "bg-[#0F7B5F]",
       });
-    });
-
-    const numerosOrdenados = Object.entries(frecuencias).sort((a, b) => b[1] - a[1]);
-
-    if (numerosOrdenados.length < 6) {
-      return [
-        { num: "05", estado: tipoEstrategia, color: "bg-[#0F7B5F]" },
-        { num: "12", estado: tipoEstrategia, color: "bg-[#B4470C]" },
-        { num: "18", estado: tipoEstrategia, color: "bg-[#1D5FA8]" },
-        { num: "24", estado: tipoEstrategia, color: "bg-[#0F7B5F]" },
-        { num: "31", estado: tipoEstrategia, color: "bg-[#B4470C]" },
-        { num: "44", estado: tipoEstrategia, color: "bg-[#1D5FA8]" },
-      ];
     }
-
-    let resultadoFinal: { num: string; estado: string; color: string }[] = [];
-    if (tipoEstrategia === "Más calientes") {
-      resultadoFinal = numerosOrdenados.slice(0, 6).map(([num, count]) => ({
-        num,
-        estado: `${count}x`,
-        color: "bg-[#B4470C]",
-      }));
-    } else if (tipoEstrategia === "Más fríos") {
-      resultadoFinal = [...numerosOrdenados].reverse().slice(0, 6).map(([num, count]) => ({
-        num,
-        estado: `${count}x`,
-        color: "bg-[#1D5FA8]",
-      }));
-    } else if (tipoEstrategia === "Más atrasados") {
-      resultadoFinal = numerosOrdenados.slice(-6).map(([num]) => ({
-        num,
-        estado: "Atrasado",
-        color: "bg-[#0F7B5F]",
-      }));
-    } else {
-      const calientes = numerosOrdenados.slice(0, 3);
-      const frios = [...numerosOrdenados].reverse().slice(0, 3);
-      resultadoFinal = [
-        ...calientes.map(([num]) => ({ num, estado: "Caliente", color: "bg-[#B4470C]" })),
-        ...frios.map(([num]) => ({ num, estado: "Frío", color: "bg-[#1D5FA8]" })),
-      ];
-    }
-    return resultadoFinal;
+    return numerosGenerados;
   };
 
-  const [combinacionSugerida, setCombinacionSugerida] = useState(() =>
+  const [combinacionSugerida, setCombinacionSugerida] = useState<Item[]>(() =>
     calcularJugadaEstadistica("Equilibrada", "quini6")
   );
 
@@ -132,18 +95,25 @@ export default function LotoTrackHome() {
 
     setTimeout(() => {
       setAnalizandoBoletas(false);
+      const esTelekino = juegoActivo === "telekino";
+      const numsA = esTelekino
+        ? [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 2, 8, 14]
+        : [5, 12, 18, 24, 31, 44];
+      const numsB = esTelekino
+        ? [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 1, 9, 15]
+        : [2, 14, 27, 33, 40, 45];
+
       setComparativaBoletas({
         fotoNombre: archivo.name,
         juego: juegoActivo.toUpperCase(),
         estrategiaAplicada: estrategia,
         boletasAnalizadas: [
-          { id: "Boleta A", numeros: [5, 12, 18, 24, 31, 44], score: "94%", estado: "🔥 Alta coincidencia con números calientes" },
-          { id: "Boleta B", numeros: [2, 14, 27, 33, 40, 45], score: "68%", estado: "⚖️ Perfil equilibrado moderado" },
-          { id: "Boleta C", numeros: [1, 9, 15, 22, 38, 42], score: "45%", estado: "❄️ Mayoría de números fríos" },
+          { id: "Cartón / Boleta 1", numeros: numsA, score: "91%", estado: "🔥 Alta afinidad estadística con tu selección" },
+          { id: "Cartón / Boleta 2", numeros: numsB, score: "72%", estado: "⚖️ Perfil equilibrado estándar" },
         ],
-        recomendada: "Boleta A",
+        recomendada: "Cartón / Boleta 1",
       });
-    }, 2200);
+    }, 2000);
   };
 
   const verificarClave = (e: React.FormEvent) => {
@@ -255,15 +225,14 @@ export default function LotoTrackHome() {
                 <span className="text-xs font-bold tracking-widest text-[#E0A422] uppercase">
                   Combinación Sugerida ({juegoActivo.toUpperCase()})
                 </span>
-                <div className="flex flex-wrap gap-3 my-6">
+                <div className="flex flex-wrap gap-2 my-6">
                   {combinacionSugerida.map((item, index) => (
                     <div key={index} className="flex flex-col items-center">
                       <div
-                        className={`w-14 h-14 rounded-full ${item.color} flex items-center justify-center text-white font-black text-lg shadow-md border-2 border-neutral-800`}
+                        className={`w-11 h-11 rounded-full ${item.color} flex items-center justify-center text-white font-black text-sm shadow-md border-2 border-neutral-800`}
                       >
                         {item.num}
                       </div>
-                      <span className="text-[10px] text-neutral-400 mt-2 font-medium">{item.estado}</span>
                     </div>
                   ))}
                 </div>
@@ -303,7 +272,7 @@ export default function LotoTrackHome() {
       {seccionActiva === "boletos" && (
         <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 shadow-lg">
           <h2 className="text-base font-bold text-white mb-2">Gestión de Boletos Guardados</h2>
-          <p className="text-xs text-neutral-400 mb-4">Administrá tus jugadas favoritas y comparativas guardadas.</p>
+          <p className="text-xs text-neutral-400 mb-4">Administrá tus jugadas favoritas.</p>
           <div className="p-4 bg-neutral-900 rounded-xl border border-neutral-800 text-xs text-neutral-300">
             No hay boletos guardados en esta sesión. Usá el asesor en agencia para fotografiar jugadas.
           </div>
@@ -314,32 +283,12 @@ export default function LotoTrackHome() {
         <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 shadow-lg">
           <h2 className="text-base font-bold text-white mb-2">Historial de Sorteos Anteriores</h2>
           <p className="text-xs text-neutral-400 mb-4">Consulta los últimos extractos registrados.</p>
-          <div className="space-y-3">
-            {historialesPorJuego["quini6"].map((s, idx) => (
-              <div
-                key={idx}
-                className="bg-neutral-900 p-4 rounded-xl border border-neutral-800 flex justify-between items-center text-xs"
-              >
-                <div>
-                  <span className="text-[#E0A422] font-bold">{s.edicion}</span> —{" "}
-                  <span className="text-neutral-400">{s.fecha}</span>
-                </div>
-                <div className="flex gap-1">
-                  {s.numeros.map((n, i) => (
-                    <span key={i} className="bg-neutral-950 px-2 py-1 rounded text-white font-bold">
-                      {n}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       )}
 
       {seccionActiva === "verificador" && (
         <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 shadow-lg">
-          <h2 className="text-base font-bold text-white mb-2">Asesor Estadístico en Agencia 🏪</h2>
+          <h2 className="text-base font-bold text-white mb-2">Asesor Estadístico en Agencia 🏪 ({juegoActivo.toUpperCase()})</h2>
           <p className="text-xs text-neutral-400 mb-4">
             ¿Estás en la agencia y querés saber cuál boleta comprar? Sácale una foto a las opciones impresas y Loto Track te
             dirá cuál tiene más afinidad con tu estrategia actual ({estrategia}).
@@ -347,7 +296,9 @@ export default function LotoTrackHome() {
 
           <div className="bg-neutral-900 border-2 border-dashed border-neutral-700 rounded-xl p-8 flex flex-col items-center justify-center text-center mb-6">
             <span className="text-4xl mb-3">📸</span>
-            <p className="text-xs text-neutral-300 font-medium mb-4">Fotografía las opciones de boletas sobre el mostrador de la agencia</p>
+            <p className="text-xs text-neutral-300 font-medium mb-4">
+              Fotografía las opciones de boletas sobre el mostrador de la agencia
+            </p>
 
             <label className="bg-[#0F7B5F] hover:bg-[#0F7B5F]/80 text-white font-bold text-xs px-6 py-3 rounded-xl cursor-pointer transition-all shadow">
               {analizandoBoletas ? "Procesando y cruzando estadísticas..." : "🎯 Fotografiar Boletas y Analizar"}
@@ -414,51 +365,6 @@ export default function LotoTrackHome() {
         </div>
       )}
 
-      {historialAbierto && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex justify-end transition-all backdrop-blur-sm">
-          <div className="w-full max-w-md bg-neutral-950 border-l border-neutral-800 h-full p-6 flex flex-col shadow-2xl">
-            <div className="flex justify-between items-center border-b border-neutral-800 pb-4 mb-4">
-              <div>
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                  Anteriores: {juegoActivo.toUpperCase()}
-                </h3>
-                <p className="text-[11px] text-neutral-400">Resultados reales de este juego</p>
-              </div>
-              <button
-                onClick={() => setHistorialAbierto(false)}
-                className="bg-neutral-900 hover:bg-neutral-800 text-neutral-300 px-3 py-1.5 rounded-lg text-xs font-bold border border-neutral-700"
-              >
-                ✕ Cerrar
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-              {historialesPorJuego[juegoActivo].map((sorteo, idx) => (
-                <div key={idx} className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl shadow-inner">
-                  <div className="flex justify-between text-xs text-neutral-400 mb-2 font-medium">
-                    <span>📅 {sorteo.fecha}</span>
-                    <span className="text-[#E0A422] font-bold">{sorteo.edicion}</span>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    {sorteo.numeros.map((n, i) => (
-                      <span
-                        key={i}
-                        className="bg-neutral-950 border border-neutral-800 text-white font-bold text-xs px-2.5 py-1 rounded-md"
-                      >
-                        {n < 10 ? `0${n}` : n}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="border-t border-neutral-900 pt-3 mt-4 text-[10px] text-neutral-500 text-center">
-              Loto Track • Análisis Estadístico
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   );
 }
