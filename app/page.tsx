@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Scanner from "@/components/Scanner";
 
 type Sorteo = { fecha: string; edicion: string; numeros: number[] };
 type Item = { num: string; estado: string; color: string };
@@ -36,6 +37,7 @@ export default function LotoTrackHome() {
 
   const [analizandoBoletas, setAnalizandoBoletas] = useState(false);
   const [comparativaBoletas, setComparativaBoletas] = useState<Comparativa>(null);
+  const [scannerAbierto, setScannerAbierto] = useState(false);
 
   const historialesPorJuego: Record<string, Sorteo[]> = {
     quiniela: [
@@ -300,16 +302,24 @@ export default function LotoTrackHome() {
               Fotografía las opciones de boletas sobre el mostrador de la agencia
             </p>
 
-            <label className="bg-[#0F7B5F] hover:bg-[#0F7B5F]/80 text-white font-bold text-xs px-6 py-3 rounded-xl cursor-pointer transition-all shadow">
-              {analizandoBoletas ? "Procesando y cruzando estadísticas..." : "🎯 Fotografiar Boletas y Analizar"}
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={manejarFotoBoletasEnAgencia}
-                className="hidden"
-              />
-            </label>
+            <div className="flex gap-2">
+              <label className="bg-[#0F7B5F] hover:bg-[#0F7B5F]/80 text-white font-bold text-xs px-6 py-3 rounded-xl cursor-pointer transition-all shadow">
+                {analizandoBoletas ? "Procesando y cruzando estadísticas..." : "🎯 Fotografiar Boletas y Analizar"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={manejarFotoBoletasEnAgencia}
+                  className="hidden"
+                />
+              </label>
+              <button
+                onClick={() => setScannerAbierto(true)}
+                className="bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs px-6 py-3 rounded-xl border border-neutral-700 transition-all shadow"
+              >
+                📷 Escanear código
+              </button>
+            </div>
           </div>
 
           {comparativaBoletas && (
@@ -365,6 +375,28 @@ export default function LotoTrackHome() {
         </div>
       )}
 
+      {scannerAbierto && (
+        <Scanner
+          onScan={(text) => {
+            setScannerAbierto(false);
+            setAnalizandoBoletas(true);
+            setComparativaBoletas(null);
+            setTimeout(() => {
+              setAnalizandoBoletas(false);
+              setComparativaBoletas({
+                fotoNombre: `Escaneo: ${text}`,
+                juego: juegoActivo.toUpperCase(),
+                estrategiaAplicada: estrategia,
+                boletasAnalizadas: [
+                  { id: "Boleta escaneada", numeros: [5, 12, 18, 24, 31, 44], score: "88%", estado: "Código detectado correctamente" },
+                ],
+                recomendada: "Boleta escaneada",
+              });
+            }, 1200);
+          }}
+          onClose={() => setScannerAbierto(false)}
+        />
+      )}
     </main>
   );
 }
