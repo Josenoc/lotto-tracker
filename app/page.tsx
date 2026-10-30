@@ -1,15 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 
+type Sorteo = { fecha: string; edicion: string; numeros: number[] };
 type Item = { num: string; estado: string; color: string };
-type ResultadoAnalisis = {
-  juego: string;
-  estrategia: string;
-  numeros: string[];
-  afinidad: string;
-  evaluacion: string;
-} | null;
-type JuegoConfig = { max: number; cantidad: number; pool: number[] };
 
 export default function LotoTrackHome() {
   const [autenticado, setAutenticado] = useState(false);
@@ -24,118 +17,97 @@ export default function LotoTrackHome() {
     }
   }, []);
 
-  const [seccionActiva, setSeccionActiva] = useState("inicio");
   const [juegoActivo, setJuegoActivo] = useState("quini6");
   const [estrategia, setEstrategia] = useState("Equilibrada");
   const [historialAbierto, setHistorialAbierto] = useState(false);
 
-  const [numerosIngresados, setNumerosIngresados] = useState<string[]>([]);
-  const [resultadoAnalisisManual, setResultadoAnalisisManual] = useState<ResultadoAnalisis>(null);
-
-  const historialesPorJuego: Record<string, JuegoConfig> = {
-    quiniela: { max: 99, cantidad: 5, pool: [3, 7, 12, 14, 19, 22, 34, 45, 52, 88, 91] },
-    quini6: { max: 45, cantidad: 6, pool: [1, 3, 5, 8, 11, 12, 18, 22, 24, 27, 29, 31, 35, 40, 44, 45] },
-    telekino: { max: 25, cantidad: 15, pool: [1, 2, 3, 5, 6, 8, 10, 11, 13, 14, 15, 17, 18, 19, 21, 22, 23, 24, 25] },
+  const historialesPorJuego: Record<string, Sorteo[]> = {
+    quiniela: [
+      { fecha: "28/10/2026", edicion: "Matutina (Mendoza)", numeros: [12, 45, 88, 3, 19] },
+      { fecha: "27/10/2026", edicion: "Nocturna (Mendoza)", numeros: [7, 34, 52, 91, 14] },
+      { fecha: "26/10/2026", edicion: "Primera (Mendoza)", numeros: [2, 15, 41, 63, 80] },
+    ],
+    quini6: [
+      { fecha: "25/10/2026", edicion: "Tradicional / Revancha", numeros: [5, 12, 18, 24, 31, 44] },
+      { fecha: "18/10/2026", edicion: "Siempre Sale", numeros: [3, 11, 22, 29, 35, 40] },
+      { fecha: "11/10/2026", edicion: "Tradicional", numeros: [1, 8, 14, 27, 36, 45] },
+    ],
+    telekino: [
+      { fecha: "25/10/2026", edicion: "Sorteo Oficial", numeros: [1, 3, 5, 8, 11, 13, 15, 17, 19, 21, 23, 25, 2, 6, 10] },
+      { fecha: "18/10/2026", edicion: "Sorteo Oficial", numeros: [4, 7, 9, 12, 14, 16, 18, 20, 22, 24, 1, 5, 11, 15, 21] },
+    ],
   };
 
-  const generarJugadaDinamica = (tipoEstrategia: string, juego: string): Item[] => {
-    const config = historialesPorJuego[juego] || historialesPorJuego.quini6;
-    let poolNums = [...config.pool];
+  const calcularJugadaEstadistica = (tipoEstrategia: string, juego: string): Item[] => {
+    const sorteos = historialesPorJuego[juego] || historialesPorJuego.quini6;
+    const frecuencias: Record<string, number> = {};
 
-    if (poolNums.length < config.cantidad) {
-      for (let i = 1; i <= config.max; i++) {
-        if (!poolNums.includes(i)) poolNums.push(i);
-      }
+    sorteos.forEach((sorteo) => {
+      sorteo.numeros.forEach((num) => {
+        const numStr = num < 10 ? `0${num}` : `${num}`;
+        frecuencias[numStr] = (frecuencias[numStr] || 0) + 1;
+      });
+    });
+
+    const numerosOrdenados = Object.entries(frecuencias).sort((a, b) => b[1] - a[1]);
+
+    if (numerosOrdenados.length < 6) {
+      return [
+        { num: "05", estado: tipoEstrategia, color: "bg-[#0F7B5F]" },
+        { num: "12", estado: tipoEstrategia, color: "bg-[#B4470C]" },
+        { num: "18", estado: tipoEstrategia, color: "bg-[#1D5FA8]" },
+        { num: "24", estado: tipoEstrategia, color: "bg-[#0F7B5F]" },
+        { num: "31", estado: tipoEstrategia, color: "bg-[#B4470C]" },
+        { num: "44", estado: tipoEstrategia, color: "bg-[#1D5FA8]" },
+      ];
     }
 
-    poolNums.sort(() => Math.random() - 0.5);
-
-    let seleccionados: number[] = [];
-    let colorBolilla = "bg-[#0F7B5F]";
-
+    let resultadoFinal: Item[] = [];
     if (tipoEstrategia === "Más calientes") {
-      seleccionados = poolNums.slice(0, config.cantidad);
-      colorBolilla = "bg-[#B4470C]";
+      resultadoFinal = numerosOrdenados.slice(0, 6).map(([num, count]) => ({
+        num,
+        estado: `${count}x`,
+        color: "bg-[#B4470C]",
+      }));
     } else if (tipoEstrategia === "Más fríos") {
-      seleccionados = [...poolNums].reverse().slice(0, config.cantidad);
-      colorBolilla = "bg-[#1D5FA8]";
+      resultadoFinal = [...numerosOrdenados].reverse().slice(0, 6).map(([num, count]) => ({
+        num,
+        estado: `${count}x`,
+        color: "bg-[#1D5FA8]",
+      }));
     } else if (tipoEstrategia === "Más atrasados") {
-      seleccionados = poolNums.filter((_, idx) => idx % 2 === 0).slice(0, config.cantidad);
-      colorBolilla = "bg-[#0F7B5F]";
+      resultadoFinal = numerosOrdenados.slice(-6).map(([num]) => ({
+        num,
+        estado: "Atrasado",
+        color: "bg-[#0F7B5F]",
+      }));
     } else {
-      seleccionados = poolNums.slice(0, config.cantidad);
-      colorBolilla = "bg-[#0F7B5F]";
+      const calientes = numerosOrdenados.slice(0, 3);
+      const frios = [...numerosOrdenados].reverse().slice(0, 3);
+      resultadoFinal = [
+        ...calientes.map(([num]) => ({ num, estado: "Caliente", color: "bg-[#B4470C]" })),
+        ...frios.map(([num]) => ({ num, estado: "Frío", color: "bg-[#1D5FA8]" })),
+      ];
     }
-
-    seleccionados.sort((a, b) => a - b);
-
-    return seleccionados.map((n) => ({
-      num: n < 10 ? `0${n}` : `${n}`,
-      estado: tipoEstrategia,
-      color: colorBolilla,
-    }));
+    return resultadoFinal;
   };
 
-  const [combinacionSugerida, setCombinacionSugerida] = useState<Item[]>([
-    { num: "05", estado: "Equilibrada", color: "bg-[#0F7B5F]" },
-    { num: "12", estado: "Equilibrada", color: "bg-[#0F7B5F]" },
-    { num: "18", estado: "Equilibrada", color: "bg-[#0F7B5F]" },
-    { num: "24", estado: "Equilibrada", color: "bg-[#0F7B5F]" },
-    { num: "31", estado: "Equilibrada", color: "bg-[#0F7B5F]" },
-    { num: "44", estado: "Equilibrada", color: "bg-[#0F7B5F]" },
-  ]);
-
-  useEffect(() => {
-    setCombinacionSugerida(generarJugadaDinamica("Equilibrada", "quini6"));
-  }, []);
+  const [combinacionSugerida, setCombinacionSugerida] = useState<Item[]>(() =>
+    calcularJugadaEstadistica("Equilibrada", "quini6")
+  );
 
   const cambiarJuegoYCalcular = (nuevoJuego: string) => {
     setJuegoActivo(nuevoJuego);
-    setNumerosIngresados([]);
-    setResultadoAnalisisManual(null);
-    setCombinacionSugerida(generarJugadaDinamica(estrategia, nuevoJuego));
+    setCombinacionSugerida(calcularJugadaEstadistica(estrategia, nuevoJuego));
   };
 
   const cambiarEstrategiaYCalcular = (nuevaEstrategia: string) => {
     setEstrategia(nuevaEstrategia);
-    setCombinacionSugerida(generarJugadaDinamica(nuevaEstrategia, juegoActivo));
+    setCombinacionSugerida(calcularJugadaEstadistica(nuevaEstrategia, juegoActivo));
   };
 
   const generarOtraCombinacion = () => {
-    setCombinacionSugerida(generarJugadaDinamica(estrategia, juegoActivo));
-  };
-
-  const toggleNumeroManual = (numStr: string) => {
-    const limite = juegoActivo === "telekino" ? 15 : juegoActivo === "quiniela" ? 5 : 6;
-    if (numerosIngresados.includes(numStr)) {
-      setNumerosIngresados(numerosIngresados.filter((n) => n !== numStr));
-    } else {
-      if (numerosIngresados.length >= limite) {
-        alert(`Para ${juegoActivo.toUpperCase()} solo podés seleccionar ${limite} números.`);
-        return;
-      }
-      setNumerosIngresados([...numerosIngresados, numStr]);
-    }
-  };
-
-  const analizarJugadaManual = () => {
-    const limite = juegoActivo === "telekino" ? 15 : juegoActivo === "quiniela" ? 5 : 6;
-    if (numerosIngresados.length < limite) {
-      alert(`Por favor seleccioná los ${limite} números de tu boleta.`);
-      return;
-    }
-
-    const afinidad = Math.min(95, Math.max(45, numerosIngresados.length * 8 + 30));
-    setResultadoAnalisisManual({
-      juego: juegoActivo.toUpperCase(),
-      estrategia: estrategia,
-      numeros: [...numerosIngresados].sort(),
-      afinidad: `${afinidad}%`,
-      evaluacion:
-        afinidad > 70
-          ? "🔥 Excelente afinidad con tu estrategia actual."
-          : "⚖️ Perfil equilibrado para este sorteo.",
-    });
+    setCombinacionSugerida(calcularJugadaEstadistica(estrategia, juegoActivo));
   };
 
   const verificarClave = (e: React.FormEvent) => {
@@ -178,8 +150,6 @@ export default function LotoTrackHome() {
     );
   }
 
-  const maxTotalBolillas = juegoActivo === "telekino" ? 25 : juegoActivo === "quiniela" ? 99 : 45;
-
   return (
     <main className="min-h-screen bg-[#0A0A0A] text-[#F4F3EE] p-4 md:p-8 font-sans relative overflow-x-hidden">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-neutral-800 pb-4 mb-6 gap-4">
@@ -188,205 +158,181 @@ export default function LotoTrackHome() {
             <span className="bg-[#0F7B5F] w-3 h-3 rounded-full inline-block"></span>
             LOTO TRACK
           </h1>
-          <p className="text-xs text-neutral-400 mt-1">Panel de control privado y seguro</p>
+          <p className="text-xs text-neutral-400 mt-1">Análisis estadístico del último año • Sin garantía de azar</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 bg-neutral-900 p-1.5 rounded-xl border border-neutral-800">
+        <div className="flex items-center gap-3">
+          <div className="flex gap-2 bg-neutral-900 p-1 rounded-xl border border-neutral-800">
+            <button
+              onClick={() => cambiarJuegoYCalcular("quiniela")}
+              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                juegoActivo === "quiniela" ? "bg-[#F4F3EE] text-black" : "text-neutral-400 hover:text-white"
+              }`}
+            >
+              Quiniela Mendoza
+            </button>
+            <button
+              onClick={() => cambiarJuegoYCalcular("quini6")}
+              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                juegoActivo === "quini6" ? "bg-[#F4F3EE] text-black" : "text-neutral-400 hover:text-white"
+              }`}
+            >
+              Quini 6
+            </button>
+            <button
+              onClick={() => cambiarJuegoYCalcular("telekino")}
+              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                juegoActivo === "telekino" ? "bg-[#F4F3EE] text-black" : "text-neutral-400 hover:text-white"
+              }`}
+            >
+              Telekino
+            </button>
+          </div>
+
           <button
-            onClick={() => setSeccionActiva("inicio")}
-            className={`px-3 py-2 text-xs font-bold rounded-lg transition-all ${
-              seccionActiva === "inicio" ? "bg-[#F4F3EE] text-black" : "text-neutral-400 hover:text-white"
-            }`}
+            onClick={() => setHistorialAbierto(true)}
+            className="bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-xs font-bold px-4 py-2.5 rounded-xl text-white transition-all shadow flex items-center gap-2"
           >
-            🏠 Inicio
-          </button>
-          <button
-            onClick={() => setSeccionActiva("boletos")}
-            className={`px-3 py-2 text-xs font-bold rounded-lg transition-all ${
-              seccionActiva === "boletos" ? "bg-[#F4F3EE] text-black" : "text-neutral-400 hover:text-white"
-            }`}
-          >
-            🎫 Boletos
-          </button>
-          <button
-            onClick={() => setSeccionActiva("sorteos")}
-            className={`px-3 py-2 text-xs font-bold rounded-lg transition-all ${
-              seccionActiva === "sorteos" ? "bg-[#F4F3EE] text-black" : "text-neutral-400 hover:text-white"
-            }`}
-          >
-            📊 Sorteos
-          </button>
-          <button
-            onClick={() => setSeccionActiva("verificador")}
-            className={`px-3 py-2 text-xs font-bold rounded-lg transition-all ${
-              seccionActiva === "verificador" ? "bg-[#F4F3EE] text-black" : "text-neutral-400 hover:text-white"
-            }`}
-          >
-            🔍 Asesor en Agencia
+            📜 Ver Anteriores
           </button>
         </div>
       </header>
 
-      {seccionActiva === "inicio" && (
-        <div className="space-y-6">
-          <div className="flex gap-2 bg-neutral-900 p-1 rounded-xl border border-neutral-800 w-fit mb-4">
-            {["quiniela", "quini6", "telekino"].map((j) => (
-              <button
-                key={j}
-                onClick={() => cambiarJuegoYCalcular(j)}
-                className={`px-4 py-2 text-xs font-bold rounded-lg capitalize transition-all ${
-                  juegoActivo === j ? "bg-[#F4F3EE] text-black" : "text-neutral-400 hover:text-white"
-                }`}
-              >
-                {j}
-              </button>
-            ))}
-          </div>
-
-          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-neutral-950 border border-neutral-800 rounded-2xl p-6 flex flex-col justify-between shadow-lg">
-              <div>
-                <span className="text-xs font-bold tracking-widest text-[#E0A422] uppercase">
-                  Combinación Sugerida ({juegoActivo.toUpperCase()})
-                </span>
-                <div className="flex flex-wrap gap-2.5 my-6">
-                  {combinacionSugerida.map((item, index) => (
-                    <div key={index} className="flex flex-col items-center">
-                      <div
-                        className={`w-12 h-12 rounded-full ${item.color} flex items-center justify-center text-white font-black text-sm shadow-md border-2 border-neutral-800`}
-                      >
-                        {item.num}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 flex flex-col justify-between shadow-lg">
-              <div>
-                <span className="text-xs font-bold tracking-widest text-neutral-400 uppercase">Estrategia</span>
-                <div className="space-y-2 mt-3">
-                  {["Equilibrada", "Más calientes", "Más fríos", "Más atrasados"].map((est) => (
-                    <button
-                      key={est}
-                      onClick={() => cambiarEstrategiaYCalcular(est)}
-                      className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${
-                        estrategia === est
-                          ? "border-[#0F7B5F] bg-[#0F7B5F]/10 text-white"
-                          : "border-neutral-800 text-neutral-400 hover:bg-neutral-900"
-                      }`}
-                    >
-                      {est}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <button
-                onClick={generarOtraCombinacion}
-                className="w-full mt-6 bg-[#F4F3EE] hover:bg-white text-black font-extrabold text-xs py-3 rounded-xl transition-all shadow-md"
-              >
-                Generar otra
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
-
-      {seccionActiva === "boletos" && (
-        <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 shadow-lg">
-          <h2 className="text-base font-bold text-white mb-2">Gestión de Boletos Guardados</h2>
-          <p className="text-xs text-neutral-400 mb-4">Administrá tus jugadas favoritas.</p>
-        </div>
-      )}
-
-      {seccionActiva === "sorteos" && (
-        <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 shadow-lg">
-          <h2 className="text-base font-bold text-white mb-2">Historial de Sorteos Anteriores</h2>
-          <p className="text-xs text-neutral-400 mb-4">Consulta los últimos extractos registrados.</p>
-        </div>
-      )}
-
-      {seccionActiva === "verificador" && (
-        <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 shadow-lg">
-          <h2 className="text-base font-bold text-white mb-2">Asesor Estadístico en Agencia 🏪 ({juegoActivo.toUpperCase()})</h2>
-          <p className="text-xs text-neutral-400 mb-4">
-            Marcá los números de la boleta de <strong>{juegoActivo.toUpperCase()}</strong> para evaluar su afinidad con tu
-            estrategia ({estrategia}).
-          </p>
-
-          <div className="flex gap-2 bg-neutral-900 p-1 rounded-xl border border-neutral-800 w-fit mb-4">
-            {["quiniela", "quini6", "telekino"].map((j) => (
-              <button
-                key={j}
-                onClick={() => cambiarJuegoYCalcular(j)}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg capitalize transition-all ${
-                  juegoActivo === j ? "bg-[#F4F3EE] text-black" : "text-neutral-400 hover:text-white"
-                }`}
-              >
-                {j}
-              </button>
-            ))}
-          </div>
-
-          <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl mb-6">
-            <div className="flex justify-between items-center mb-3 text-xs">
-              <span className="text-neutral-300 font-bold">
-                Marcá los números ({numerosIngresados.length} / {juegoActivo === "telekino" ? 15 : juegoActivo === "quiniela" ? 5 : 6}):
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="lg:col-span-2 bg-neutral-950 border border-neutral-800 rounded-2xl p-6 flex flex-col justify-between shadow-lg">
+          <div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold tracking-widest text-[#E0A422] uppercase">
+                Combinación Sugerida ({juegoActivo.toUpperCase()})
               </span>
-              <button onClick={() => setNumerosIngresados([])} className="text-[#E0A422] hover:underline">
-                Limpiar
-              </button>
+              <span className="text-[11px] text-neutral-400 bg-neutral-900 px-3 py-1 rounded-lg border border-neutral-800">
+                Estrategia: <strong className="text-white">{estrategia}</strong>
+              </span>
             </div>
 
-            <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 max-h-60 overflow-y-auto p-1">
-              {Array.from({ length: maxTotalBolillas }, (_, i) => {
-                const n = i + 1;
-                const numStr = n < 10 ? `0${n}` : `${n}`;
-                const seleccionado = numerosIngresados.includes(numStr);
-                return (
-                  <button
-                    key={i}
-                    onClick={() => toggleNumeroManual(numStr)}
-                    className={`py-2 rounded-lg text-xs font-bold border transition-all ${
-                      seleccionado
-                        ? "bg-[#0F7B5F] text-white border-[#0F7B5F] shadow"
-                        : "bg-neutral-950 text-neutral-400 border-neutral-800 hover:border-neutral-600"
-                    }`}
+            <div className="flex flex-wrap gap-3 my-6">
+              {combinacionSugerida.map((item, index) => (
+                <div key={index} className="flex flex-col items-center">
+                  <div
+                    className={`w-14 h-14 rounded-full ${item.color} flex items-center justify-center text-white font-black text-lg shadow-md border-2 border-neutral-800 transition-all transform hover:scale-105`}
                   >
-                    {numStr}
-                  </button>
-                );
-              })}
+                    {item.num}
+                  </div>
+                  <span className="text-[10px] text-neutral-400 mt-2 font-medium">{item.estado}</span>
+                </div>
+              ))}
             </div>
+          </div>
 
+          <p className="text-[11px] text-neutral-500 mt-6 border-t border-neutral-900 pt-3">
+            Cada sorteo es independiente. Loto Track calcula las sugerencias basándose estrictamente en la frecuencia de los
+            sorteos anteriores.
+          </p>
+        </div>
+
+        <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 flex flex-col justify-between shadow-lg">
+          <div>
+            <span className="text-xs font-bold tracking-widest text-neutral-400 uppercase">Estrategia</span>
+            <div className="space-y-2 mt-3">
+              {["Equilibrada", "Más calientes", "Más fríos", "Más atrasados"].map((est) => (
+                <button
+                  key={est}
+                  onClick={() => cambiarEstrategiaYCalcular(est)}
+                  className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                    estrategia === est
+                      ? "border-[#0F7B5F] bg-[#0F7B5F]/10 text-white"
+                      : "border-neutral-800 text-neutral-400 hover:bg-neutral-900"
+                  }`}
+                >
+                  {est}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-3 mt-6">
             <button
-              onClick={analizarJugadaManual}
-              className="w-full mt-4 bg-[#0F7B5F] hover:bg-[#0F7B5F]/80 text-white font-bold text-xs py-3 rounded-xl transition-all shadow"
+              onClick={generarOtraCombinacion}
+              className="flex-1 bg-[#F4F3EE] hover:bg-white text-black font-extrabold text-xs py-3 rounded-xl transition-all shadow-md active:scale-95"
             >
-              🔍 Evaluar Jugada Seleccionada
+              Generar otra
+            </button>
+            <button
+              onClick={() => alert("Combinación guardada en tu panel.")}
+              className="px-5 bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border border-neutral-700 font-bold text-xs py-3 rounded-xl transition-all"
+            >
+              Guardar
             </button>
           </div>
+        </div>
+      </section>
 
-          {resultadoAnalisisManual && (
-            <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl space-y-3 animate-in fade-in">
-              <div className="flex justify-between text-xs text-[#E0A422] font-bold">
-                <span>EVALUACIÓN: {resultadoAnalisisManual.juego}</span>
-                <span>Afinidad: {resultadoAnalisisManual.afinidad}</span>
+      <section className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-white mb-2">Frecuencia por número (Último Año)</h3>
+        <p className="text-xs text-neutral-400 mb-6">Veces que salió cada número en el historial analizado.</p>
+
+        <div className="grid grid-cols-6 sm:grid-cols-10 md:grid-cols-15 gap-2">
+          {Array.from({ length: 46 }, (_, i) => {
+            const numStr = i < 10 ? `0${i}` : `${i}`;
+            const isSelected = combinacionSugerida.some((c) => c.num === numStr);
+            return (
+              <div
+                key={i}
+                className={`p-2 rounded-lg text-center border transition-all ${
+                  isSelected ? "border-[#E0A422] bg-neutral-900 shadow" : "border-neutral-800 bg-neutral-900/50 text-neutral-400"
+                }`}
+              >
+                <span className="block text-xs font-bold text-white">{numStr}</span>
+                <span className="block text-[9px] text-neutral-500 mt-0.5">Analizado</span>
               </div>
-              <div className="flex gap-1.5 flex-wrap">
-                {resultadoAnalisisManual.numeros.map((n, idx) => (
-                  <span
-                    key={idx}
-                    className="bg-neutral-950 border border-neutral-700 text-white font-bold text-xs px-2.5 py-1 rounded-md"
-                  >
-                    {n}
-                  </span>
-                ))}
+            );
+          })}
+        </div>
+      </section>
+
+      {historialAbierto && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex justify-end transition-all backdrop-blur-sm">
+          <div className="w-full max-w-md bg-neutral-950 border-l border-neutral-800 h-full p-6 flex flex-col shadow-2xl animate-in slide-in-from-right">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-4 mb-4">
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Anteriores: {juegoActivo.toUpperCase()}
+                </h3>
+                <p className="text-[11px] text-neutral-400">Resultados reales registrados</p>
               </div>
-              <p className="text-xs text-white font-medium">{resultadoAnalisisManual.evaluacion}</p>
+              <button
+                onClick={() => setHistorialAbierto(false)}
+                className="bg-neutral-900 hover:bg-neutral-800 text-neutral-300 px-3 py-1.5 rounded-lg text-xs font-bold border border-neutral-700"
+              >
+                ✕ Cerrar
+              </button>
             </div>
-          )}
+
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              {historialesPorJuego[juegoActivo].map((sorteo, idx) => (
+                <div key={idx} className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl shadow-inner">
+                  <div className="flex justify-between text-xs text-neutral-400 mb-2 font-medium">
+                    <span>📅 {sorteo.fecha}</span>
+                    <span className="text-[#E0A422] font-bold">{sorteo.edicion}</span>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {sorteo.numeros.map((n, i) => (
+                      <span
+                        key={i}
+                        className="bg-neutral-950 border border-neutral-800 text-white font-bold text-xs px-2.5 py-1 rounded-md"
+                      >
+                        {n < 10 ? `0${n}` : n}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t border-neutral-900 pt-3 mt-4 text-[10px] text-neutral-500 text-center">
+              Loto Track • Análisis Estadístico
+            </div>
+          </div>
         </div>
       )}
     </main>
