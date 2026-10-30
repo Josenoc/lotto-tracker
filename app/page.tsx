@@ -2,11 +2,18 @@
 import { useEffect, useState } from "react";
 
 type Sorteo = { fecha: string; edicion: string; numeros: number[] };
-type ResultadoEscaneo = {
-  ticket: string;
+
+type Comparativa = {
+  fotoNombre: string;
   juego: string;
-  estadoPremio: string;
-  chancesEstadisticas: string;
+  estrategiaAplicada: string;
+  boletasAnalizadas: {
+    id: string;
+    numeros: number[];
+    score: string;
+    estado: string;
+  }[];
+  recomendada: string;
 } | null;
 
 export default function LotoTrackHome() {
@@ -26,8 +33,9 @@ export default function LotoTrackHome() {
   const [juegoActivo, setJuegoActivo] = useState("quini6");
   const [estrategia, setEstrategia] = useState("Equilibrada");
   const [historialAbierto, setHistorialAbierto] = useState(false);
-  const [escannerAbierto, setEscannerAbierto] = useState(false);
-  const [resultadoEscaneo, setResultadoEscaneo] = useState<ResultadoEscaneo>(null);
+
+  const [analizandoBoletas, setAnalizandoBoletas] = useState(false);
+  const [comparativaBoletas, setComparativaBoletas] = useState<Comparativa>(null);
 
   const historialesPorJuego: Record<string, Sorteo[]> = {
     quiniela: [
@@ -115,16 +123,27 @@ export default function LotoTrackHome() {
     setCombinacionSugerida(calcularJugadaEstadistica(estrategia, juegoActivo));
   };
 
-  const simularEscaneoBoleta = () => {
-    setResultadoEscaneo(null);
+  const manejarFotoBoletasEnAgencia = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const archivo = e.target.files?.[0];
+    if (!archivo) return;
+
+    setAnalizandoBoletas(true);
+    setComparativaBoletas(null);
+
     setTimeout(() => {
-      setResultadoEscaneo({
-        ticket: "AGENCIA #402 - TICKET #884920",
+      setAnalizandoBoletas(false);
+      setComparativaBoletas({
+        fotoNombre: archivo.name,
         juego: juegoActivo.toUpperCase(),
-        estadoPremio: "Sin premios registrados en este sorteo.",
-        chancesEstadisticas: "Moderadas-Altas (Incluye números frecuentes del último periodo).",
+        estrategiaAplicada: estrategia,
+        boletasAnalizadas: [
+          { id: "Boleta A", numeros: [5, 12, 18, 24, 31, 44], score: "94%", estado: "🔥 Alta coincidencia con números calientes" },
+          { id: "Boleta B", numeros: [2, 14, 27, 33, 40, 45], score: "68%", estado: "⚖️ Perfil equilibrado moderado" },
+          { id: "Boleta C", numeros: [1, 9, 15, 22, 38, 42], score: "45%", estado: "❄️ Mayoría de números fríos" },
+        ],
+        recomendada: "Boleta A",
       });
-    }, 1500);
+    }, 2200);
   };
 
   const verificarClave = (e: React.FormEvent) => {
@@ -209,7 +228,7 @@ export default function LotoTrackHome() {
               seccionActiva === "verificador" ? "bg-[#F4F3EE] text-black" : "text-neutral-400 hover:text-white"
             }`}
           >
-            🔍 Verificador
+            🔍 Asesor en Agencia
           </button>
         </div>
       </header>
@@ -284,9 +303,9 @@ export default function LotoTrackHome() {
       {seccionActiva === "boletos" && (
         <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 shadow-lg">
           <h2 className="text-base font-bold text-white mb-2">Gestión de Boletos Guardados</h2>
-          <p className="text-xs text-neutral-400 mb-4">Acá podés administrar tus jugadas cargadas y favoritas.</p>
+          <p className="text-xs text-neutral-400 mb-4">Administrá tus jugadas favoritas y comparativas guardadas.</p>
           <div className="p-4 bg-neutral-900 rounded-xl border border-neutral-800 text-xs text-neutral-300">
-            No hay boletos guardados en esta sesión. Usá el verificador para escanear una boleta.
+            No hay boletos guardados en esta sesión. Usá el asesor en agencia para fotografiar jugadas.
           </div>
         </div>
       )}
@@ -294,7 +313,7 @@ export default function LotoTrackHome() {
       {seccionActiva === "sorteos" && (
         <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 shadow-lg">
           <h2 className="text-base font-bold text-white mb-2">Historial de Sorteos Anteriores</h2>
-          <p className="text-xs text-neutral-400 mb-4">Consulta los últimos extractos registrados por la app.</p>
+          <p className="text-xs text-neutral-400 mb-4">Consulta los últimos extractos registrados.</p>
           <div className="space-y-3">
             {historialesPorJuego["quini6"].map((s, idx) => (
               <div
@@ -320,86 +339,78 @@ export default function LotoTrackHome() {
 
       {seccionActiva === "verificador" && (
         <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 shadow-lg">
-          <h2 className="text-base font-bold text-white mb-2">Verificador Óptico de Boletas</h2>
-          <p className="text-xs text-neutral-400 mb-4">Escaneá el código de barras o la jugada para comprobar premios y estadísticas.</p>
+          <h2 className="text-base font-bold text-white mb-2">Asesor Estadístico en Agencia 🏪</h2>
+          <p className="text-xs text-neutral-400 mb-4">
+            ¿Estás en la agencia y querés saber cuál boleta comprar? Sácale una foto a las opciones impresas y Loto Track te
+            dirá cuál tiene más afinidad con tu estrategia actual ({estrategia}).
+          </p>
 
-          <div className="bg-neutral-900 border-2 border-dashed border-neutral-700 rounded-xl h-48 flex flex-col items-center justify-center p-4 mb-4 text-center">
-            <span className="text-3xl mb-2">📷</span>
-            <p className="text-xs text-neutral-300 font-medium">Apunta la cámara al ticket de la agencia</p>
-            <button
-              onClick={simularEscaneoBoleta}
-              className="mt-4 bg-[#0F7B5F] hover:bg-[#0F7B5F]/80 text-white font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow"
-            >
-              Analizar Boleta Actual
-            </button>
+          <div className="bg-neutral-900 border-2 border-dashed border-neutral-700 rounded-xl p-8 flex flex-col items-center justify-center text-center mb-6">
+            <span className="text-4xl mb-3">📸</span>
+            <p className="text-xs text-neutral-300 font-medium mb-4">Fotografía las opciones de boletas sobre el mostrador de la agencia</p>
+
+            <label className="bg-[#0F7B5F] hover:bg-[#0F7B5F]/80 text-white font-bold text-xs px-6 py-3 rounded-xl cursor-pointer transition-all shadow">
+              {analizandoBoletas ? "Procesando y cruzando estadísticas..." : "🎯 Fotografiar Boletas y Analizar"}
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={manejarFotoBoletasEnAgencia}
+                className="hidden"
+              />
+            </label>
           </div>
 
-          {resultadoEscaneo && (
-            <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl space-y-2">
-              <div className="flex justify-between text-xs text-[#E0A422] font-bold">
-                <span>{resultadoEscaneo.ticket}</span>
-                <span>{resultadoEscaneo.juego}</span>
+          {comparativaBoletas && (
+            <div className="space-y-4 animate-in fade-in">
+              <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl">
+                <div className="flex justify-between text-xs text-[#E0A422] font-bold mb-2">
+                  <span>RESULTADO DEL ANÁLISIS EN AGENCIA</span>
+                  <span>Estrategia: {comparativaBoletas.estrategiaAplicada}</span>
+                </div>
+                <p className="text-xs text-neutral-300 mb-4">
+                  Imagen procesada: <strong>{comparativaBoletas.fotoNombre}</strong>
+                </p>
+
+                <div className="space-y-3">
+                  {comparativaBoletas.boletasAnalizadas.map((bol, i) => {
+                    const esLaRecomendada = bol.id === comparativaBoletas.recomendada;
+                    return (
+                      <div
+                        key={i}
+                        className={`p-4 rounded-xl border transition-all ${
+                          esLaRecomendada ? "border-[#E0A422] bg-[#E0A422]/10 shadow-md" : "border-neutral-800 bg-neutral-950"
+                        }`}
+                      >
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs font-bold text-white flex items-center gap-2">
+                            {bol.id}{" "}
+                            {esLaRecomendada && (
+                              <span className="bg-[#E0A422] text-black text-[10px] px-2 py-0.5 rounded-full font-black">
+                                ⭐ RECOMENDADA PARA COMPRAR
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-xs font-mono font-bold text-[#0F7B5F]">Afinidad: {bol.score}</span>
+                        </div>
+                        <div className="flex gap-2 mb-2 flex-wrap">
+                          {bol.numeros.map((n, idx) => (
+                            <span
+                              key={idx}
+                              className="bg-neutral-900 border border-neutral-700 text-white font-bold text-xs px-2.5 py-1 rounded-md"
+                            >
+                              {n < 10 ? `0${n}` : n}
+                            </span>
+                          ))}
+                        </div>
+                        <p className="text-[11px] text-neutral-400">{bol.estado}</p>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <p className="text-xs text-white">
-                <strong>Estado:</strong> {resultadoEscaneo.estadoPremio}
-              </p>
-              <p className="text-xs text-neutral-300">
-                <strong>Análisis:</strong> {resultadoEscaneo.chancesEstadisticas}
-              </p>
             </div>
           )}
-        </div>
-      )}
-
-      {escannerAbierto && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg bg-neutral-950 border border-neutral-800 rounded-2xl p-6 shadow-2xl flex flex-col">
-            <div className="flex justify-between items-center border-b border-neutral-800 pb-4 mb-4">
-              <div>
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Escáner Óptico de Boleta</h3>
-                <p className="text-[11px] text-neutral-400">Apunta al código de barras o fotografía la jugada</p>
-              </div>
-              <button
-                onClick={() => {
-                  setEscannerAbierto(false);
-                  setResultadoEscaneo(null);
-                }}
-                className="bg-neutral-900 hover:bg-neutral-800 text-neutral-300 px-3 py-1.5 rounded-lg text-xs font-bold border border-neutral-700"
-              >
-                ✕ Cerrar
-              </button>
-            </div>
-
-            <div className="bg-neutral-900 border-2 border-dashed border-neutral-700 rounded-xl h-48 flex flex-col items-center justify-center p-4 mb-4 text-center">
-              <span className="text-3xl mb-2">📷</span>
-              <p className="text-xs text-neutral-300 font-medium">Coloca el código de barras o los números dentro del recuadro</p>
-              <button
-                onClick={simularEscaneoBoleta}
-                className="mt-4 bg-[#0F7B5F] hover:bg-[#0F7B5F]/80 text-white font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow"
-              >
-                Capturar e Interpretar Ticket
-              </button>
-            </div>
-
-            {resultadoEscaneo && (
-              <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl space-y-2 animate-in fade-in">
-                <div className="flex justify-between text-xs text-[#E0A422] font-bold">
-                  <span>{resultadoEscaneo.ticket}</span>
-                  <span>{resultadoEscaneo.juego}</span>
-                </div>
-                <p className="text-xs text-white">
-                  <strong>Estado:</strong> {resultadoEscaneo.estadoPremio}
-                </p>
-                <p className="text-xs text-neutral-300">
-                  <strong>Análisis:</strong> {resultadoEscaneo.chancesEstadisticas}
-                </p>
-              </div>
-            )}
-
-            <div className="border-t border-neutral-900 pt-3 mt-4 text-[10px] text-neutral-500 text-center">
-              Loto Track • Validación y Estadística
-            </div>
-          </div>
         </div>
       )}
 
