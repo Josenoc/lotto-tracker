@@ -1,218 +1,122 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
-import type { Sorteo } from "@/lib/sorteos";
-import {
-  JUEGOS,
-  SORTEOS,
-  colorEstado,
-  countNumeros,
-  estadoNumero,
-  frecuencia,
-  sugerir,
-  totalNumeros,
-} from "@/lib/sorteos";
+import { useState } from "react";
+
+type Estadisticas = {
+  success: boolean;
+  totalSorteosEnPeriodo: number;
+  frecuencias: Record<string, number>;
+};
 
 export default function LotoTrackHome() {
-  const [juegoActivo, setJuegoActivo] = useState("quini6");
-  const [estrategia, setEstrategia] = useState("Equilibrada");
-  const [sorteos, setSorteos] = useState<Sorteo[]>(SORTEOS);
-  const [actualizando, setActualizando] = useState(false);
+  const [juegoSeleccionado, setJuegoSeleccionado] = useState("quiniela_mendoza");
+  const [datosEstadisticos, setDatosEstadisticos] = useState<Estadisticas | null>(null);
+  const [cargando, setCargando] = useState(false);
 
-  const cargar = () => {
-    fetch("/api/sorteos")
-      .then((r) => r.json())
-      .then((data: Sorteo[]) => {
-        if (Array.isArray(data)) setSorteos(data);
-      })
-      .catch(() => {});
-  };
-
-  useEffect(() => {
-    cargar();
-  }, []);
-
-  const actualizar = async () => {
-    setActualizando(true);
+  const cargarDatos = async (juego: string, dias: number) => {
+    setCargando(true);
+    setJuegoSeleccionado(juego);
     try {
-      await fetch("/api/actualizar", { method: "POST" });
-      cargar();
+      const res = await fetch(`/api/actualizar?juego=${juego}&dias=${dias}`);
+      const data = await res.json();
+      if (data.success) {
+        setDatosEstadisticos(data);
+      }
+    } catch (error) {
+      console.error("Error al cargar datos:", error);
     } finally {
-      setActualizando(false);
+      setCargando(false);
     }
   };
 
-  const draws = useMemo(
-    () => sorteos.filter((s) => s.juego === juegoActivo),
-    [sorteos, juegoActivo]
-  );
-  const counts = useMemo(() => frecuencia(juegoActivo, sorteos), [juegoActivo, sorteos]);
-  const sugeridos = useMemo(
-    () => sugerir(juegoActivo, estrategia, sorteos),
-    [juegoActivo, estrategia, sorteos]
-  );
-  const total = totalNumeros(juegoActivo);
-  const count = countNumeros(juegoActivo);
-
-  const combinacionSugerida = sugeridos.map((n) => ({
-    num: String(n).padStart(2, "0"),
-    estado: estadoNumero(juegoActivo, n, sorteos),
-    color: colorEstado(estadoNumero(juegoActivo, n, sorteos)),
-  }));
-
-  const resumen = useMemo(() => {
-    const estados = combinacionSugerida.map((c) => c.estado);
-    const calientes = estados.filter((e) => e === "Caliente").length;
-    const atrasados = estados.filter((e) => e === "Atrasado").length;
-    const frios = estados.filter((e) => e === "Frío").length;
-    return `${calientes} calientes • ${atrasados} atrasados • ${frios} fríos`;
-  }, [combinacionSugerida]);
-
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-[#F4F3EE] p-4 md:p-8 font-sans">
+    <main className="min-h-screen bg-[#0A0A0A] text-[#F4F3EE] p-4 md:p-8 font-sans">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-neutral-800 pb-4 mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-extrabold tracking-wider text-white flex items-center gap-2">
             <span className="bg-[#0F7B5F] w-3 h-3 rounded-full inline-block"></span>
             LOTO TRACK
           </h1>
-          <p className="text-xs text-neutral-400 mt-1">
-            Análisis estadístico del último año • Sin garantía de azar
-            {draws.length > 0 && ` • ${draws.length} sorteos`}
-          </p>
+          <p className="text-xs text-neutral-400 mt-1">Panel Privado de Análisis Estadístico</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap gap-2 bg-neutral-900 p-1.5 rounded-xl border border-neutral-800">
           <button
-            onClick={actualizar}
-            disabled={actualizando}
-            className="px-3 py-2 text-xs font-bold rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-white disabled:opacity-50"
+            onClick={() => cargarDatos("quiniela_mendoza", 7)}
+            className={`px-3 py-2 text-xs font-bold rounded-lg transition-all ${
+              juegoSeleccionado === "quiniela_mendoza"
+                ? "bg-[#F4F3EE] text-black"
+                : "text-neutral-400 hover:text-white"
+            }`}
           >
-            {actualizando ? "Actualizando…" : "Actualizar datos"}
+            Quiniela Mendoza (7 días)
           </button>
-          <div className="flex gap-2 bg-neutral-900 p-1 rounded-xl border border-neutral-800">
-            {Object.keys(JUEGOS).map((j) => (
-              <button
-                key={j}
-                onClick={() => setJuegoActivo(j)}
-                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-                  juegoActivo === j
-                    ? "bg-[#F4F3EE] text-black"
-                    : "text-neutral-400 hover:text-white"
-                }`}
-              >
-                {JUEGOS[j].nombre}
-              </button>
-            ))}
-          </div>
+          <button
+            onClick={() => cargarDatos("quiniela_nacional", 7)}
+            className={`px-3 py-2 text-xs font-bold rounded-lg transition-all ${
+              juegoSeleccionado === "quiniela_nacional"
+                ? "bg-[#F4F3EE] text-black"
+                : "text-neutral-400 hover:text-white"
+            }`}
+          >
+            Quiniela Nacional (7 días)
+          </button>
+          <button
+            onClick={() => cargarDatos("quini6", 14)}
+            className={`px-3 py-2 text-xs font-bold rounded-lg transition-all ${
+              juegoSeleccionado === "quini6" ? "bg-[#F4F3EE] text-black" : "text-neutral-400 hover:text-white"
+            }`}
+          >
+            Quini 6 (14 días)
+          </button>
+          <button
+            onClick={() => cargarDatos("telekino", 14)}
+            className={`px-3 py-2 text-xs font-bold rounded-lg transition-all ${
+              juegoSeleccionado === "telekino"
+                ? "bg-[#F4F3EE] text-black"
+                : "text-neutral-400 hover:text-white"
+            }`}
+          >
+            Telekino (14 días)
+          </button>
         </div>
       </header>
 
-      {draws.length === 0 && (
-        <p className="mb-6 text-sm text-neutral-400">
-          No hay datos para este juego todavía.
-        </p>
-      )}
-
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <div className="lg:col-span-2 bg-neutral-950 border border-neutral-800 rounded-2xl p-6 flex flex-col justify-between shadow-lg">
+      <section className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 shadow-lg mb-6">
+        <div className="flex justify-between items-center mb-4">
           <div>
             <span className="text-xs font-bold tracking-widest text-[#E0A422] uppercase">
-              Combinación Sugerida ({count} números)
+              Estadísticas del Periodo
             </span>
-
-            <div className="flex flex-wrap gap-3 my-6">
-              {combinacionSugerida.map((item, index) => (
-                <div key={index} className="flex flex-col items-center">
-                  <div
-                    className={`w-14 h-14 rounded-full ${item.color} flex items-center justify-center text-white font-black text-lg shadow-md border-2 border-neutral-800`}
-                  >
-                    {item.num}
-                  </div>
-                  <span className="text-[10px] text-neutral-400 mt-2 font-medium">
-                    {item.estado}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <p className="text-xs text-neutral-400 font-medium">{resumen}</p>
+            <h2 className="text-lg font-extrabold text-white capitalize mt-1">
+              {juegoSeleccionado.replace("_", " ")}
+            </h2>
           </div>
-
-          <p className="text-[11px] text-neutral-500 mt-6 border-t border-neutral-900 pt-3">
-            Cada sorteo es independiente. Loto Track resume el historial del
-            último año, no predice el azar ni asegura premios.
-          </p>
+          <span className="text-xs bg-neutral-900 text-neutral-300 px-3 py-1.5 rounded-lg border border-neutral-800 font-medium">
+            {cargando
+              ? "Actualizando..."
+              : `${datosEstadisticos?.totalSorteosEnPeriodo || 0} sorteos analizados`}
+          </span>
         </div>
 
-        <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 flex flex-col justify-between shadow-lg">
-          <div>
-            <span className="text-xs font-bold tracking-widest text-neutral-400 uppercase">
-              Estrategia
-            </span>
-            <div className="space-y-2 mt-3">
-              {["Equilibrada", "Más calientes", "Más fríos", "Más atrasados"].map(
-                (est) => (
-                  <button
-                    key={est}
-                    onClick={() => setEstrategia(est)}
-                    className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${
-                      estrategia === est
-                        ? "border-[#0F7B5F] bg-[#0F7B5F]/10 text-white"
-                        : "border-neutral-800 text-neutral-400 hover:bg-neutral-900"
-                    }`}
-                  >
-                    {est}
-                  </button>
-                )
-              )}
-            </div>
-          </div>
-
-          <div className="flex gap-3 mt-6">
-            <button
-              onClick={() => setEstrategia((e) => e)}
-              className="flex-1 bg-[#F4F3EE] hover:bg-white text-black font-extrabold text-xs py-3 rounded-xl transition-all shadow-md"
-            >
-              Generar otra
-            </button>
-            <button className="px-5 bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border border-neutral-700 font-bold text-xs py-3 rounded-xl transition-all">
-              Guardar
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-white mb-2">
-          Frecuencia por número (Último Año)
-        </h3>
         <p className="text-xs text-neutral-400 mb-6">
-          Veces que salió cada número. El contorno marca los de tu combinación
-          sugerida.
+          Mostrando los números ganadores procesados automáticamente para las ediciones del período seleccionado.
         </p>
 
-        <div className={`grid gap-2 ${total > 50 ? "grid-cols-8 sm:grid-cols-10 md:grid-cols-12" : "grid-cols-6 sm:grid-cols-10"}`}>
-          {Array.from({ length: total }, (_, i) => {
-            const numStr = String(i).padStart(2, "0");
-            const isSelected = sugeridos.includes(i);
-            return (
+        <div className="grid grid-cols-6 sm:grid-cols-10 md:grid-cols-12 gap-2">
+          {datosEstadisticos?.frecuencias &&
+            Object.entries(datosEstadisticos.frecuencias).map(([num, count], i) => (
               <div
                 key={i}
-                className={`p-2 rounded-lg text-center border transition-all ${
-                  isSelected
-                    ? "border-[#E0A422] bg-neutral-900 shadow"
-                    : "border-neutral-800 bg-neutral-900/50 text-neutral-400"
-                }`}
+                className="p-3 rounded-xl text-center border border-neutral-800 bg-neutral-900/60 shadow"
               >
-                <span className="block text-xs font-bold text-white">{numStr}</span>
-                <span className="block text-[9px] text-neutral-500 mt-0.5">
-                  {counts[i]}x
+                <span className="block text-sm font-black text-white">{num}</span>
+                <span className="block text-[10px] text-[#E0A422] mt-0.5 font-semibold">
+                  {count} apariciones
                 </span>
               </div>
-            );
-          })}
+            ))}
         </div>
       </section>
-    </div>
+    </main>
   );
 }
