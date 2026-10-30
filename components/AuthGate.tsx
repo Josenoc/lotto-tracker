@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const CLAVE_SECRETA = "Loto.1976";
+const CLAVE_SECRETA = "loto2026";
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [autenticado, setAutenticado] = useState(false);
