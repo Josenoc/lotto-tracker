@@ -3,6 +3,12 @@ import { useState } from "react";
 
 type Sorteo = { fecha: string; edicion: string; numeros: number[] };
 type Item = { num: string; estado: string; color: string };
+type ResultadoEscaneo = {
+  ticket: string;
+  juego: string;
+  estadoPremio: string;
+  chancesEstadisticas: string;
+} | null;
 
 export default function LotoTrackHome() {
   const [autenticado, setAutenticado] = useState(false);
@@ -13,26 +19,22 @@ export default function LotoTrackHome() {
   const [juegoActivo, setJuegoActivo] = useState("quini6");
   const [estrategia, setEstrategia] = useState("Equilibrada");
   const [historialAbierto, setHistorialAbierto] = useState(false);
+  const [escannerAbierto, setEscannerAbierto] = useState(false);
+  const [resultadoEscaneo, setResultadoEscaneo] = useState<ResultadoEscaneo>(null);
 
   const historialesPorJuego: Record<string, Sorteo[]> = {
     quiniela: [
-      { fecha: "28/10/2026", edicion: "Matutina (Mendoza)", numeros: [12, 45, 88, 3, 19, 12, 45, 22] },
-      { fecha: "27/10/2026", edicion: "Nocturna (Mendoza)", numeros: [7, 34, 52, 91, 14, 7, 12, 45] },
-      { fecha: "26/10/2026", edicion: "Primera (Mendoza)", numeros: [2, 15, 41, 63, 80, 7, 34, 12] },
+      { fecha: "28/10/2026", edicion: "Matutina (Mendoza)", numeros: [12, 45, 88, 3, 19] },
+      { fecha: "27/10/2026", edicion: "Nocturna (Mendoza)", numeros: [7, 34, 52, 91, 14] },
     ],
     quini6: [
       { fecha: "25/10/2026", edicion: "Tradicional / Revancha", numeros: [5, 12, 18, 24, 31, 44] },
       { fecha: "18/10/2026", edicion: "Siempre Sale", numeros: [3, 11, 22, 29, 35, 40] },
-      { fecha: "11/10/2026", edicion: "Tradicional", numeros: [1, 8, 14, 27, 36, 45] },
-      { fecha: "04/10/2026", edicion: "Tradicional", numeros: [5, 12, 18, 22, 31, 39] },
     ],
     telekino: [
       { fecha: "25/10/2026", edicion: "Sorteo Oficial", numeros: [1, 3, 5, 8, 11, 13, 15, 17, 19, 21, 23, 25, 2, 6, 10] },
-      { fecha: "18/10/2026", edicion: "Sorteo Oficial", numeros: [4, 7, 9, 12, 14, 16, 18, 20, 22, 24, 1, 5, 11, 15, 21] },
     ],
   };
-
-  const rangos: Record<string, number> = { quiniela: 100, quini6: 46, telekino: 26 };
 
   const calcularJugadaEstadistica = (tipoEstrategia: string, juego: string): Item[] => {
     const sorteos = historialesPorJuego[juego] || historialesPorJuego.quini6;
@@ -59,17 +61,16 @@ export default function LotoTrackHome() {
     }
 
     let resultadoFinal: Item[] = [];
-
     if (tipoEstrategia === "Más calientes") {
       resultadoFinal = numerosOrdenados.slice(0, 6).map(([num, count]) => ({
         num,
-        estado: `${count} apariciones`,
+        estado: `${count}x`,
         color: "bg-[#B4470C]",
       }));
     } else if (tipoEstrategia === "Más fríos") {
       resultadoFinal = [...numerosOrdenados].reverse().slice(0, 6).map(([num, count]) => ({
         num,
-        estado: `${count} apariciones`,
+        estado: `${count}x`,
         color: "bg-[#1D5FA8]",
       }));
     } else if (tipoEstrategia === "Más atrasados") {
@@ -86,7 +87,6 @@ export default function LotoTrackHome() {
         ...frios.map(([num]) => ({ num, estado: "Frío", color: "bg-[#1D5FA8]" })),
       ];
     }
-
     return resultadoFinal;
   };
 
@@ -108,15 +108,17 @@ export default function LotoTrackHome() {
     setCombinacionSugerida(calcularJugadaEstadistica(estrategia, juegoActivo));
   };
 
-  // Frecuencias para la grilla
-  const frecuencias: Record<string, number> = {};
-  const sorteos = historialesPorJuego[juegoActivo] || [];
-  sorteos.forEach((sorteo) => {
-    sorteo.numeros.forEach((num) => {
-      const numStr = num < 10 ? `0${num}` : `${num}`;
-      frecuencias[numStr] = (frecuencias[numStr] || 0) + 1;
-    });
-  });
+  const simularEscaneoBoleta = () => {
+    setResultadoEscaneo(null);
+    setTimeout(() => {
+      setResultadoEscaneo({
+        ticket: "AGENCIA #402 - TICKET #884920",
+        juego: juegoActivo.toUpperCase(),
+        estadoPremio: "Sin premios registrados en este sorteo (Participa en sorteo adicional por auto 0km).",
+        chancesEstadisticas: "Moderadas-Altas (Incluye 2 números calientes del último periodo).",
+      });
+    }, 1500);
+  };
 
   const verificarClave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,7 +159,16 @@ export default function LotoTrackHome() {
     );
   }
 
-  const total = rangos[juegoActivo] || 46;
+  const frecuencias: Record<string, number> = {};
+  const sorteos = historialesPorJuego[juegoActivo] || [];
+  sorteos.forEach((sorteo) => {
+    sorteo.numeros.forEach((num) => {
+      const numStr = num < 10 ? `0${num}` : `${num}`;
+      frecuencias[numStr] = (frecuencias[numStr] || 0) + 1;
+    });
+  });
+
+  const total = juegoActivo === "quiniela" ? 100 : juegoActivo === "telekino" ? 26 : 46;
 
   return (
     <main className="min-h-screen bg-[#0A0A0A] text-[#F4F3EE] p-4 md:p-8 font-sans relative overflow-x-hidden">
@@ -167,22 +178,22 @@ export default function LotoTrackHome() {
             <span className="bg-[#0F7B5F] w-3 h-3 rounded-full inline-block"></span>
             LOTO TRACK
           </h1>
-          <p className="text-xs text-neutral-400 mt-1">Análisis estadístico del último año • Sin garantía de azar</p>
+          <p className="text-xs text-neutral-400 mt-1">Análisis estadístico y escáner de boletas</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex gap-2 bg-neutral-900 p-1 rounded-xl border border-neutral-800">
             <button
               onClick={() => cambiarJuegoYCalcular("quiniela")}
-              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+              className={`px-3 py-2 text-xs font-bold rounded-lg transition-all ${
                 juegoActivo === "quiniela" ? "bg-[#F4F3EE] text-black" : "text-neutral-400 hover:text-white"
               }`}
             >
-              Quiniela Mendoza
+              Quiniela
             </button>
             <button
               onClick={() => cambiarJuegoYCalcular("quini6")}
-              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+              className={`px-3 py-2 text-xs font-bold rounded-lg transition-all ${
                 juegoActivo === "quini6" ? "bg-[#F4F3EE] text-black" : "text-neutral-400 hover:text-white"
               }`}
             >
@@ -190,13 +201,20 @@ export default function LotoTrackHome() {
             </button>
             <button
               onClick={() => cambiarJuegoYCalcular("telekino")}
-              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+              className={`px-3 py-2 text-xs font-bold rounded-lg transition-all ${
                 juegoActivo === "telekino" ? "bg-[#F4F3EE] text-black" : "text-neutral-400 hover:text-white"
               }`}
             >
               Telekino
             </button>
           </div>
+
+          <button
+            onClick={() => setEscannerAbierto(true)}
+            className="bg-[#0F7B5F] hover:bg-[#0F7B5F]/80 text-white border border-[#0F7B5F] text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow flex items-center gap-2"
+          >
+            📷 Escanear Boleta
+          </button>
 
           <button
             onClick={() => setHistorialAbierto(true)}
@@ -234,7 +252,7 @@ export default function LotoTrackHome() {
           </div>
 
           <p className="text-[11px] text-neutral-500 mt-6 border-t border-neutral-900 pt-3">
-            Cada sorteo es independiente. Loto Track calcula las sugerencias basándose estrictamente en la frecuencia de los sorteos anteriores.
+            Cada sorteo es independiente. Sugerencia basada en la frecuencia de los sorteos anteriores.
           </p>
         </div>
 
@@ -299,9 +317,61 @@ export default function LotoTrackHome() {
         </div>
       </section>
 
+      {escannerAbierto && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg bg-neutral-950 border border-neutral-800 rounded-2xl p-6 shadow-2xl flex flex-col">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-4 mb-4">
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Escáner Óptico de Boleta</h3>
+                <p className="text-[11px] text-neutral-400">Apunta al código de barras o fotografía la jugada</p>
+              </div>
+              <button
+                onClick={() => {
+                  setEscannerAbierto(false);
+                  setResultadoEscaneo(null);
+                }}
+                className="bg-neutral-900 hover:bg-neutral-800 text-neutral-300 px-3 py-1.5 rounded-lg text-xs font-bold border border-neutral-700"
+              >
+                ✕ Cerrar
+              </button>
+            </div>
+
+            <div className="bg-neutral-900 border-2 border-dashed border-neutral-700 rounded-xl h-48 flex flex-col items-center justify-center p-4 mb-4 text-center">
+              <span className="text-3xl mb-2">📷</span>
+              <p className="text-xs text-neutral-300 font-medium">Coloca el código de barras o los números dentro del recuadro</p>
+              <button
+                onClick={simularEscaneoBoleta}
+                className="mt-4 bg-[#0F7B5F] hover:bg-[#0F7B5F]/80 text-white font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow"
+              >
+                Capturar e Interpretar Ticket
+              </button>
+            </div>
+
+            {resultadoEscaneo && (
+              <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl space-y-2 animate-in fade-in">
+                <div className="flex justify-between text-xs text-[#E0A422] font-bold">
+                  <span>{resultadoEscaneo.ticket}</span>
+                  <span>{resultadoEscaneo.juego}</span>
+                </div>
+                <p className="text-xs text-white">
+                  <strong>Estado de premios:</strong> {resultadoEscaneo.estadoPremio}
+                </p>
+                <p className="text-xs text-neutral-300">
+                  <strong>Análisis Loto Track:</strong> {resultadoEscaneo.chancesEstadisticas}
+                </p>
+              </div>
+            )}
+
+            <div className="border-t border-neutral-900 pt-3 mt-4 text-[10px] text-neutral-500 text-center">
+              Loto Track • Validación y Estadística
+            </div>
+          </div>
+        </div>
+      )}
+
       {historialAbierto && (
         <div className="fixed inset-0 bg-black/70 z-50 flex justify-end transition-all backdrop-blur-sm">
-          <div className="w-full max-w-md bg-neutral-950 border-l border-neutral-800 h-full p-6 flex flex-col shadow-2xl animate-in slide-in-from-right">
+          <div className="w-full max-w-md bg-neutral-950 border-l border-neutral-800 h-full p-6 flex flex-col shadow-2xl">
             <div className="flex justify-between items-center border-b border-neutral-800 pb-4 mb-4">
               <div>
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider">
@@ -339,7 +409,7 @@ export default function LotoTrackHome() {
             </div>
 
             <div className="border-t border-neutral-900 pt-3 mt-4 text-[10px] text-neutral-500 text-center">
-              Loto Track • Historial independiente
+              Loto Track • Análisis Estadístico
             </div>
           </div>
         </div>
