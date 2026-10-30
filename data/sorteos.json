@@ -1,54 +1,23 @@
 [
   {
     "id": 1,
-    "fecha": "2026-03-01",
-    "juego": "quini6",
-    "numeros": [
-      5,
-      12,
-      18,
-      24,
-      31,
-      44
-    ]
+    "fecha": "2026-10-23",
+    "juego": "quiniela_mendoza",
+    "edicion": "Matutina",
+    "numeros": [45, 12, 88, 3, 19]
   },
   {
     "id": 2,
-    "fecha": "2026-03-08",
-    "juego": "quini6",
-    "numeros": [
-      2,
-      5,
-      18,
-      22,
-      31,
-      40
-    ]
+    "fecha": "2026-10-23",
+    "juego": "quiniela_nacional",
+    "edicion": "Nocturna",
+    "numeros": [7, 34, 52, 91, 14]
   },
   {
     "id": 3,
-    "fecha": "2026-03-15",
+    "fecha": "2026-10-20",
     "juego": "quini6",
-    "numeros": [
-      0,
-      5,
-      18,
-      24,
-      31,
-      37
-    ]
-  },
-  {
-    "id": 1793390597552,
-    "fecha": "2026-10-30",
-    "juego": "quini6",
-    "numeros": [
-      3,
-      14,
-      21,
-      28,
-      35,
-      42
-    ]
+    "edicion": "Tradicional",
+    "numeros": [5, 12, 18, 24, 31, 44]
   }
 ]

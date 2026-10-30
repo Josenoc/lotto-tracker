@@ -2,12 +2,14 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Sorteo } from "@/lib/sorteos";
 import {
+  JUEGOS,
   SORTEOS,
-  TOTAL_NUMEROS,
   colorEstado,
+  countNumeros,
   estadoNumero,
   frecuencia,
   sugerir,
+  totalNumeros,
 } from "@/lib/sorteos";
 
 export default function LotoTrackHome() {
@@ -48,9 +50,11 @@ export default function LotoTrackHome() {
     () => sugerir(juegoActivo, estrategia, sorteos),
     [juegoActivo, estrategia, sorteos]
   );
+  const total = totalNumeros(juegoActivo);
+  const count = countNumeros(juegoActivo);
 
   const combinacionSugerida = sugeridos.map((n) => ({
-    num: n < 10 ? `0${n}` : `${n}`,
+    num: String(n).padStart(2, "0"),
     estado: estadoNumero(juegoActivo, n, sorteos),
     color: colorEstado(estadoNumero(juegoActivo, n, sorteos)),
   }));
@@ -86,24 +90,20 @@ export default function LotoTrackHome() {
             {actualizando ? "Actualizando…" : "Actualizar datos"}
           </button>
           <div className="flex gap-2 bg-neutral-900 p-1 rounded-xl border border-neutral-800">
-          {["quiniela", "quini6", "telekino"].map((j) => (
-            <button
-              key={j}
-              onClick={() => setJuegoActivo(j)}
-              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-                juegoActivo === j
-                  ? "bg-[#F4F3EE] text-black"
-                  : "text-neutral-400 hover:text-white"
-              }`}
-            >
-              {j === "quiniela"
-                ? "Quiniela Mendoza"
-                : j === "quini6"
-                ? "Quini 6"
-                : "Telekino"}
-            </button>
-          ))}
-        </div>
+            {Object.keys(JUEGOS).map((j) => (
+              <button
+                key={j}
+                onClick={() => setJuegoActivo(j)}
+                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                  juegoActivo === j
+                    ? "bg-[#F4F3EE] text-black"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                {JUEGOS[j].nombre}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
@@ -117,7 +117,7 @@ export default function LotoTrackHome() {
         <div className="lg:col-span-2 bg-neutral-950 border border-neutral-800 rounded-2xl p-6 flex flex-col justify-between shadow-lg">
           <div>
             <span className="text-xs font-bold tracking-widest text-[#E0A422] uppercase">
-              Combinación Sugerida
+              Combinación Sugerida ({count} números)
             </span>
 
             <div className="flex flex-wrap gap-3 my-6">
@@ -191,9 +191,9 @@ export default function LotoTrackHome() {
           sugerida.
         </p>
 
-        <div className="grid grid-cols-6 sm:grid-cols-10 md:grid-cols-15 gap-2">
-          {Array.from({ length: TOTAL_NUMEROS }, (_, i) => {
-            const numStr = i < 10 ? `0${i}` : `${i}`;
+        <div className={`grid gap-2 ${total > 50 ? "grid-cols-8 sm:grid-cols-10 md:grid-cols-12" : "grid-cols-6 sm:grid-cols-10"}`}>
+          {Array.from({ length: total }, (_, i) => {
+            const numStr = String(i).padStart(2, "0");
             const isSelected = sugeridos.includes(i);
             return (
               <div
