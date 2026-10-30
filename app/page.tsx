@@ -14,19 +14,30 @@ export default function LotoTrackHome() {
   const [juegoActivo, setJuegoActivo] = useState("quini6");
   const [estrategia, setEstrategia] = useState("Equilibrada");
   const [sorteos, setSorteos] = useState<Sorteo[]>(SORTEOS);
+  const [actualizando, setActualizando] = useState(false);
 
-  useEffect(() => {
-    let active = true;
+  const cargar = () => {
     fetch("/api/sorteos")
       .then((r) => r.json())
       .then((data: Sorteo[]) => {
-        if (active && Array.isArray(data)) setSorteos(data);
+        if (Array.isArray(data)) setSorteos(data);
       })
       .catch(() => {});
-    return () => {
-      active = false;
-    };
+  };
+
+  useEffect(() => {
+    cargar();
   }, []);
+
+  const actualizar = async () => {
+    setActualizando(true);
+    try {
+      await fetch("/api/actualizar", { method: "POST" });
+      cargar();
+    } finally {
+      setActualizando(false);
+    }
+  };
 
   const draws = useMemo(
     () => sorteos.filter((s) => s.juego === juegoActivo),
@@ -66,7 +77,15 @@ export default function LotoTrackHome() {
           </p>
         </div>
 
-        <div className="flex gap-2 bg-neutral-900 p-1 rounded-xl border border-neutral-800">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={actualizar}
+            disabled={actualizando}
+            className="px-3 py-2 text-xs font-bold rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-white disabled:opacity-50"
+          >
+            {actualizando ? "Actualizando…" : "Actualizar datos"}
+          </button>
+          <div className="flex gap-2 bg-neutral-900 p-1 rounded-xl border border-neutral-800">
           {["quiniela", "quini6", "telekino"].map((j) => (
             <button
               key={j}
@@ -84,6 +103,7 @@ export default function LotoTrackHome() {
                 : "Telekino"}
             </button>
           ))}
+        </div>
         </div>
       </header>
 
