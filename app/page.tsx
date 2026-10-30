@@ -23,9 +23,9 @@ export default function LotoTrackHome() {
 
   const historialesPorJuego: Record<string, Sorteo[]> = {
     quiniela: [
-      { fecha: "28/10/2026", edicion: "Matutina (Mendoza)", numeros: [12, 45, 88, 3, 19] },
-      { fecha: "27/10/2026", edicion: "Nocturna (Mendoza)", numeros: [7, 34, 52, 91, 14] },
-      { fecha: "26/10/2026", edicion: "Primera (Mendoza)", numeros: [2, 15, 41, 63, 80] },
+      { fecha: "28/10/2026", edicion: "Matutina (Mendoza)", numeros: [12, 45, 88, 3] },
+      { fecha: "27/10/2026", edicion: "Nocturna (Mendoza)", numeros: [7, 34, 52, 91] },
+      { fecha: "26/10/2026", edicion: "Primera (Mendoza)", numeros: [2, 15, 41, 63] },
     ],
     quini6: [
       { fecha: "25/10/2026", edicion: "Tradicional / Revancha", numeros: [5, 12, 18, 24, 31, 44] },
@@ -39,6 +39,8 @@ export default function LotoTrackHome() {
   };
 
   const calcularJugadaEstadistica = (tipoEstrategia: string, juego: string): Item[] => {
+    const cantidadRequerida = juego === "quiniela" ? 4 : juego === "telekino" ? 15 : 6;
+
     const sorteos = historialesPorJuego[juego] || historialesPorJuego.quini6;
     const frecuencias: Record<string, number> = {};
 
@@ -51,8 +53,14 @@ export default function LotoTrackHome() {
 
     const numerosOrdenados = Object.entries(frecuencias).sort((a, b) => b[1] - a[1]);
 
-    if (numerosOrdenados.length < 6) {
-      return [
+    if (numerosOrdenados.length < cantidadRequerida) {
+      const respaldoQuiniela = [
+        { num: "05", estado: tipoEstrategia, color: "bg-[#0F7B5F]" },
+        { num: "12", estado: tipoEstrategia, color: "bg-[#B4470C]" },
+        { num: "18", estado: tipoEstrategia, color: "bg-[#1D5FA8]" },
+        { num: "24", estado: tipoEstrategia, color: "bg-[#0F7B5F]" },
+      ];
+      const respaldoQuini6 = [
         { num: "05", estado: tipoEstrategia, color: "bg-[#0F7B5F]" },
         { num: "12", estado: tipoEstrategia, color: "bg-[#B4470C]" },
         { num: "18", estado: tipoEstrategia, color: "bg-[#1D5FA8]" },
@@ -60,30 +68,40 @@ export default function LotoTrackHome() {
         { num: "31", estado: tipoEstrategia, color: "bg-[#B4470C]" },
         { num: "44", estado: tipoEstrategia, color: "bg-[#1D5FA8]" },
       ];
+      const respaldoTelekino = Array.from({ length: 15 }, (_, i) => ({
+        num: (i + 1) < 10 ? `0${i + 1}` : `${i + 1}`,
+        estado: tipoEstrategia,
+        color: "bg-[#1D5FA8]",
+      }));
+
+      if (juego === "quiniela") return respaldoQuiniela;
+      if (juego === "telekino") return respaldoTelekino;
+      return respaldoQuini6;
     }
 
     let resultadoFinal: Item[] = [];
     if (tipoEstrategia === "Más calientes") {
-      resultadoFinal = numerosOrdenados.slice(0, 6).map(([num, count]) => ({
+      resultadoFinal = numerosOrdenados.slice(0, cantidadRequerida).map(([num, count]) => ({
         num,
         estado: `${count}x`,
         color: "bg-[#B4470C]",
       }));
     } else if (tipoEstrategia === "Más fríos") {
-      resultadoFinal = [...numerosOrdenados].reverse().slice(0, 6).map(([num, count]) => ({
+      resultadoFinal = [...numerosOrdenados].reverse().slice(0, cantidadRequerida).map(([num, count]) => ({
         num,
         estado: `${count}x`,
         color: "bg-[#1D5FA8]",
       }));
     } else if (tipoEstrategia === "Más atrasados") {
-      resultadoFinal = numerosOrdenados.slice(-6).map(([num]) => ({
+      resultadoFinal = numerosOrdenados.slice(-cantidadRequerida).map(([num]) => ({
         num,
         estado: "Atrasado",
         color: "bg-[#0F7B5F]",
       }));
     } else {
-      const calientes = numerosOrdenados.slice(0, 3);
-      const frios = [...numerosOrdenados].reverse().slice(0, 3);
+      const mitad = Math.ceil(cantidadRequerida / 2);
+      const calientes = numerosOrdenados.slice(0, mitad);
+      const frios = [...numerosOrdenados].reverse().slice(0, cantidadRequerida - mitad);
       resultadoFinal = [
         ...calientes.map(([num]) => ({ num, estado: "Caliente", color: "bg-[#B4470C]" })),
         ...frios.map(([num]) => ({ num, estado: "Frío", color: "bg-[#1D5FA8]" })),
