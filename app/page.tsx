@@ -11,11 +11,22 @@ export default function LotoTrackHome() {
   const [estrategia, setEstrategia] = useState("Equilibrada");
   const [historialAbierto, setHistorialAbierto] = useState(false);
 
-  const historialSorteos = [
-    { fecha: "28/10/2026", edicion: "Matutina", numeros: [12, 45, 88, 3, 19] },
-    { fecha: "25/10/2026", edicion: "Nocturna", numeros: [7, 34, 52, 91, 14] },
-    { fecha: "20/10/2026", edicion: "Tradicional", numeros: [5, 12, 18, 24, 31] },
-  ];
+  const historialesPorJuego: Record<string, { fecha: string; edicion: string; numeros: number[] }[]> = {
+    quiniela: [
+      { fecha: "28/10/2026", edicion: "Matutina (Mendoza)", numeros: [12, 45, 88, 3, 19] },
+      { fecha: "27/10/2026", edicion: "Nocturna (Mendoza)", numeros: [7, 34, 52, 91, 14] },
+      { fecha: "26/10/2026", edicion: "Primera (Mendoza)", numeros: [2, 15, 41, 63, 80] },
+    ],
+    quini6: [
+      { fecha: "25/10/2026", edicion: "Tradicional / Revancha", numeros: [5, 12, 18, 24, 31, 44] },
+      { fecha: "18/10/2026", edicion: "Siempre Sale", numeros: [3, 11, 22, 29, 35, 40] },
+      { fecha: "11/10/2026", edicion: "Tradicional", numeros: [1, 8, 14, 27, 36, 45] },
+    ],
+    telekino: [
+      { fecha: "25/10/2026", edicion: "Sorteo Oficial", numeros: [1, 3, 5, 8, 11, 13, 15, 17, 19, 21, 23, 25, 2, 6, 10] },
+      { fecha: "18/10/2026", edicion: "Sorteo Oficial", numeros: [4, 7, 9, 12, 14, 16, 18, 20, 22, 24, 1, 5, 11, 15, 21] },
+    ],
+  };
 
   const combinacionSugerida = [
     { num: "00", estado: "Atrasado", color: "bg-[#0F7B5F]" },
@@ -116,7 +127,9 @@ export default function LotoTrackHome() {
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div className="lg:col-span-2 bg-neutral-950 border border-neutral-800 rounded-2xl p-6 flex flex-col justify-between shadow-lg">
           <div>
-            <span className="text-xs font-bold tracking-widest text-[#E0A422] uppercase">Combinación Sugerida</span>
+            <span className="text-xs font-bold tracking-widest text-[#E0A422] uppercase">
+              Combinación Sugerida ({juegoActivo.toUpperCase()})
+            </span>
 
             <div className="flex flex-wrap gap-3 my-6">
               {combinacionSugerida.map((item, index) => (
@@ -130,8 +143,6 @@ export default function LotoTrackHome() {
                 </div>
               ))}
             </div>
-
-            <p className="text-xs text-neutral-400 font-medium">3 calientes • 2 atrasados • 1 frío</p>
           </div>
 
           <p className="text-[11px] text-neutral-500 mt-6 border-t border-neutral-900 pt-3">
@@ -198,8 +209,10 @@ export default function LotoTrackHome() {
           <div className="w-full max-w-md bg-neutral-950 border-l border-neutral-800 h-full p-6 flex flex-col shadow-2xl animate-in slide-in-from-right">
             <div className="flex justify-between items-center border-b border-neutral-800 pb-4 mb-4">
               <div>
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Sorteos Anteriores</h3>
-                <p className="text-[11px] text-neutral-400">Resultados recientes registrados</p>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Anteriores: {juegoActivo.toUpperCase()}
+                </h3>
+                <p className="text-[11px] text-neutral-400">Resultados reales de este juego</p>
               </div>
               <button
                 onClick={() => setHistorialAbierto(false)}
@@ -210,7 +223,7 @@ export default function LotoTrackHome() {
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-              {historialSorteos.map((sorteo, idx) => (
+              {historialesPorJuego[juegoActivo].map((sorteo, idx) => (
                 <div key={idx} className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl shadow-inner">
                   <div className="flex justify-between text-xs text-neutral-400 mb-2 font-medium">
                     <span>📅 {sorteo.fecha}</span>
@@ -231,7 +244,7 @@ export default function LotoTrackHome() {
             </div>
 
             <div className="border-t border-neutral-900 pt-3 mt-4 text-[10px] text-neutral-500 text-center">
-              Loto Track • Historial rápido
+              Loto Track • Historial independiente
             </div>
           </div>
         </div>
