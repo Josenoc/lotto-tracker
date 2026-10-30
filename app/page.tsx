@@ -1,18 +1,38 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import {
+  SORTEOS,
+  TOTAL_NUMEROS,
+  colorEstado,
+  estadoNumero,
+  frecuencia,
+  sugerir,
+} from "@/lib/sorteos";
 
 export default function LotoTrackHome() {
   const [juegoActivo, setJuegoActivo] = useState("quini6");
   const [estrategia, setEstrategia] = useState("Equilibrada");
 
-  const combinacionSugerida = [
-    { num: "00", estado: "Atrasado", color: "bg-[#0F7B5F]" },
-    { num: "05", estado: "Caliente", color: "bg-[#B4470C]" },
-    { num: "18", estado: "Caliente", color: "bg-[#B4470C]" },
-    { num: "24", estado: "Atrasado", color: "bg-[#0F7B5F]" },
-    { num: "31", estado: "Caliente", color: "bg-[#B4470C]" },
-    { num: "37", estado: "Frío", color: "bg-[#1D5FA8]" },
-  ];
+  const draws = SORTEOS.filter((s) => s.juego === juegoActivo);
+  const counts = useMemo(() => frecuencia(juegoActivo), [juegoActivo]);
+  const sugeridos = useMemo(
+    () => sugerir(juegoActivo, estrategia),
+    [juegoActivo, estrategia]
+  );
+
+  const combinacionSugerida = sugeridos.map((n) => ({
+    num: n < 10 ? `0${n}` : `${n}`,
+    estado: estadoNumero(juegoActivo, n),
+    color: colorEstado(estadoNumero(juegoActivo, n)),
+  }));
+
+  const resumen = useMemo(() => {
+    const estados = combinacionSugerida.map((c) => c.estado);
+    const calientes = estados.filter((e) => e === "Caliente").length;
+    const atrasados = estados.filter((e) => e === "Atrasado").length;
+    const frios = estados.filter((e) => e === "Frío").length;
+    return `${calientes} calientes • ${atrasados} atrasados • ${frios} fríos`;
+  }, [combinacionSugerida]);
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-[#F4F3EE] p-4 md:p-8 font-sans">
@@ -24,42 +44,36 @@ export default function LotoTrackHome() {
           </h1>
           <p className="text-xs text-neutral-400 mt-1">
             Análisis estadístico del último año • Sin garantía de azar
+            {draws.length > 0 && ` • ${draws.length} sorteos`}
           </p>
         </div>
 
         <div className="flex gap-2 bg-neutral-900 p-1 rounded-xl border border-neutral-800">
-          <button
-            onClick={() => setJuegoActivo("quiniela")}
-            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-              juegoActivo === "quiniela"
-                ? "bg-[#F4F3EE] text-black"
-                : "text-neutral-400 hover:text-white"
-            }`}
-          >
-            Quiniela Mendoza
-          </button>
-          <button
-            onClick={() => setJuegoActivo("quini6")}
-            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-              juegoActivo === "quini6"
-                ? "bg-[#F4F3EE] text-black"
-                : "text-neutral-400 hover:text-white"
-            }`}
-          >
-            Quini 6
-          </button>
-          <button
-            onClick={() => setJuegoActivo("telekino")}
-            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-              juegoActivo === "telekino"
-                ? "bg-[#F4F3EE] text-black"
-                : "text-neutral-400 hover:text-white"
-            }`}
-          >
-            Telekino
-          </button>
+          {["quiniela", "quini6", "telekino"].map((j) => (
+            <button
+              key={j}
+              onClick={() => setJuegoActivo(j)}
+              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                juegoActivo === j
+                  ? "bg-[#F4F3EE] text-black"
+                  : "text-neutral-400 hover:text-white"
+              }`}
+            >
+              {j === "quiniela"
+                ? "Quiniela Mendoza"
+                : j === "quini6"
+                ? "Quini 6"
+                : "Telekino"}
+            </button>
+          ))}
         </div>
       </header>
+
+      {draws.length === 0 && (
+        <p className="mb-6 text-sm text-neutral-400">
+          No hay datos para este juego todavía.
+        </p>
+      )}
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div className="lg:col-span-2 bg-neutral-950 border border-neutral-800 rounded-2xl p-6 flex flex-col justify-between shadow-lg">
@@ -83,9 +97,7 @@ export default function LotoTrackHome() {
               ))}
             </div>
 
-            <p className="text-xs text-neutral-400 font-medium">
-              3 calientes • 2 atrasados • 1 frío
-            </p>
+            <p className="text-xs text-neutral-400 font-medium">{resumen}</p>
           </div>
 
           <p className="text-[11px] text-neutral-500 mt-6 border-t border-neutral-900 pt-3">
@@ -119,7 +131,10 @@ export default function LotoTrackHome() {
           </div>
 
           <div className="flex gap-3 mt-6">
-            <button className="flex-1 bg-[#F4F3EE] hover:bg-white text-black font-extrabold text-xs py-3 rounded-xl transition-all shadow-md">
+            <button
+              onClick={() => setEstrategia((e) => e)}
+              className="flex-1 bg-[#F4F3EE] hover:bg-white text-black font-extrabold text-xs py-3 rounded-xl transition-all shadow-md"
+            >
               Generar otra
             </button>
             <button className="px-5 bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border border-neutral-700 font-bold text-xs py-3 rounded-xl transition-all">
@@ -139,9 +154,9 @@ export default function LotoTrackHome() {
         </p>
 
         <div className="grid grid-cols-6 sm:grid-cols-10 md:grid-cols-15 gap-2">
-          {Array.from({ length: 46 }, (_, i) => {
+          {Array.from({ length: TOTAL_NUMEROS }, (_, i) => {
             const numStr = i < 10 ? `0${i}` : `${i}`;
-            const isSelected = combinacionSugerida.some((c) => c.num === numStr);
+            const isSelected = sugeridos.includes(i);
             return (
               <div
                 key={i}
@@ -153,7 +168,7 @@ export default function LotoTrackHome() {
               >
                 <span className="block text-xs font-bold text-white">{numStr}</span>
                 <span className="block text-[9px] text-neutral-500 mt-0.5">
-                  {10 + (i % 8)}x
+                  {counts[i]}x
                 </span>
               </div>
             );
