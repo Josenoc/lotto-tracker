@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 
-type Sorteo = { fecha: string; edicion: string; numeros: number[] };
 type Item = { num: string; estado: string; color: string };
 type ResultadoAnalisis = {
   juego: string;
@@ -10,6 +9,7 @@ type ResultadoAnalisis = {
   afinidad: string;
   evaluacion: string;
 } | null;
+type JuegoConfig = { max: number; cantidad: number; pool: number[] };
 
 export default function LotoTrackHome() {
   const [autenticado, setAutenticado] = useState(false);
@@ -32,60 +32,84 @@ export default function LotoTrackHome() {
   const [numerosIngresados, setNumerosIngresados] = useState<string[]>([]);
   const [resultadoAnalisisManual, setResultadoAnalisisManual] = useState<ResultadoAnalisis>(null);
 
-  const historialesPorJuego: Record<string, Sorteo[]> = {
-    quiniela: [
-      { fecha: "28/10/2026", edicion: "Matutina (Mendoza)", numeros: [12, 45, 88, 3, 19] },
-    ],
-    quini6: [
-      { fecha: "25/10/2026", edicion: "Tradicional / Revancha", numeros: [5, 12, 18, 24, 31, 44] },
-    ],
-    telekino: [
-      { fecha: "25/10/2026", edicion: "Sorteo Oficial", numeros: [1, 3, 5, 8, 11, 13, 15, 17, 19, 21, 23, 25, 2, 6, 10] },
-    ],
+  const historialesPorJuego: Record<string, JuegoConfig> = {
+    quiniela: { max: 99, cantidad: 5, pool: [3, 7, 12, 14, 19, 22, 34, 45, 52, 88, 91] },
+    quini6: { max: 45, cantidad: 6, pool: [1, 3, 5, 8, 11, 12, 18, 22, 24, 27, 29, 31, 35, 40, 44, 45] },
+    telekino: { max: 25, cantidad: 15, pool: [1, 2, 3, 5, 6, 8, 10, 11, 13, 14, 15, 17, 18, 19, 21, 22, 23, 24, 25] },
   };
 
-  const calcularJugadaEstadistica = (tipoEstrategia: string, juego: string): Item[] => {
-    const cantidadNumeros = juego === "telekino" ? 15 : 6;
-    const maxBolilla = juego === "telekino" ? 25 : juego === "quiniela" ? 99 : 45;
+  const generarJugadaDinamica = (tipoEstrategia: string, juego: string): Item[] => {
+    const config = historialesPorJuego[juego] || historialesPorJuego.quini6;
+    let poolNums = [...config.pool];
 
-    let numerosGenerados: Item[] = [];
-    for (let i = 0; i < cantidadNumeros; i++) {
-      const n = (i * 2 + (juego === "telekino" ? 1 : 5)) % maxBolilla + 1;
-      const numStr = n < 10 ? `0${n}` : `${n}`;
-      numerosGenerados.push({
-        num: numStr,
-        estado: tipoEstrategia,
-        color: juego === "telekino" ? "bg-[#1D5FA8]" : "bg-[#0F7B5F]",
-      });
+    if (poolNums.length < config.cantidad) {
+      for (let i = 1; i <= config.max; i++) {
+        if (!poolNums.includes(i)) poolNums.push(i);
+      }
     }
-    return numerosGenerados;
+
+    poolNums.sort(() => Math.random() - 0.5);
+
+    let seleccionados: number[] = [];
+    let colorBolilla = "bg-[#0F7B5F]";
+
+    if (tipoEstrategia === "Más calientes") {
+      seleccionados = poolNums.slice(0, config.cantidad);
+      colorBolilla = "bg-[#B4470C]";
+    } else if (tipoEstrategia === "Más fríos") {
+      seleccionados = [...poolNums].reverse().slice(0, config.cantidad);
+      colorBolilla = "bg-[#1D5FA8]";
+    } else if (tipoEstrategia === "Más atrasados") {
+      seleccionados = poolNums.filter((_, idx) => idx % 2 === 0).slice(0, config.cantidad);
+      colorBolilla = "bg-[#0F7B5F]";
+    } else {
+      seleccionados = poolNums.slice(0, config.cantidad);
+      colorBolilla = "bg-[#0F7B5F]";
+    }
+
+    seleccionados.sort((a, b) => a - b);
+
+    return seleccionados.map((n) => ({
+      num: n < 10 ? `0${n}` : `${n}`,
+      estado: tipoEstrategia,
+      color: colorBolilla,
+    }));
   };
 
-  const [combinacionSugerida, setCombinacionSugerida] = useState<Item[]>(() =>
-    calcularJugadaEstadistica("Equilibrada", "quini6")
-  );
+  const [combinacionSugerida, setCombinacionSugerida] = useState<Item[]>([
+    { num: "05", estado: "Equilibrada", color: "bg-[#0F7B5F]" },
+    { num: "12", estado: "Equilibrada", color: "bg-[#0F7B5F]" },
+    { num: "18", estado: "Equilibrada", color: "bg-[#0F7B5F]" },
+    { num: "24", estado: "Equilibrada", color: "bg-[#0F7B5F]" },
+    { num: "31", estado: "Equilibrada", color: "bg-[#0F7B5F]" },
+    { num: "44", estado: "Equilibrada", color: "bg-[#0F7B5F]" },
+  ]);
+
+  useEffect(() => {
+    setCombinacionSugerida(generarJugadaDinamica("Equilibrada", "quini6"));
+  }, []);
 
   const cambiarJuegoYCalcular = (nuevoJuego: string) => {
     setJuegoActivo(nuevoJuego);
     setNumerosIngresados([]);
     setResultadoAnalisisManual(null);
-    setCombinacionSugerida(calcularJugadaEstadistica(estrategia, nuevoJuego));
+    setCombinacionSugerida(generarJugadaDinamica(estrategia, nuevoJuego));
   };
 
   const cambiarEstrategiaYCalcular = (nuevaEstrategia: string) => {
     setEstrategia(nuevaEstrategia);
-    setCombinacionSugerida(calcularJugadaEstadistica(nuevaEstrategia, juegoActivo));
+    setCombinacionSugerida(generarJugadaDinamica(nuevaEstrategia, juegoActivo));
   };
 
   const generarOtraCombinacion = () => {
-    setCombinacionSugerida(calcularJugadaEstadistica(estrategia, juegoActivo));
+    setCombinacionSugerida(generarJugadaDinamica(estrategia, juegoActivo));
   };
 
   const toggleNumeroManual = (numStr: string) => {
+    const limite = juegoActivo === "telekino" ? 15 : juegoActivo === "quiniela" ? 5 : 6;
     if (numerosIngresados.includes(numStr)) {
       setNumerosIngresados(numerosIngresados.filter((n) => n !== numStr));
     } else {
-      const limite = juegoActivo === "telekino" ? 15 : 6;
       if (numerosIngresados.length >= limite) {
         alert(`Para ${juegoActivo.toUpperCase()} solo podés seleccionar ${limite} números.`);
         return;
@@ -95,25 +119,22 @@ export default function LotoTrackHome() {
   };
 
   const analizarJugadaManual = () => {
-    const limite = juegoActivo === "telekino" ? 15 : 6;
+    const limite = juegoActivo === "telekino" ? 15 : juegoActivo === "quiniela" ? 5 : 6;
     if (numerosIngresados.length < limite) {
       alert(`Por favor seleccioná los ${limite} números de tu boleta.`);
       return;
     }
 
-    const calientesEjemplo = ["05", "12", "18", "24", "31", "44", "01", "03"];
-    const aciertosCalientes = numerosIngresados.filter((n) => calientesEjemplo.includes(n)).length;
-    const afinidad = Math.min(98, Math.max(40, aciertosCalientes * 15 + 35));
-
+    const afinidad = Math.min(95, Math.max(45, numerosIngresados.length * 8 + 30));
     setResultadoAnalisisManual({
       juego: juegoActivo.toUpperCase(),
       estrategia: estrategia,
       numeros: [...numerosIngresados].sort(),
       afinidad: `${afinidad}%`,
       evaluacion:
-        afinidad > 75
-          ? "🔥 Excelente afinidad con tu estrategia actual (Muchos números frecuentes)."
-          : "⚖️ Perfil moderado / equilibrado para este sorteo.",
+        afinidad > 70
+          ? "🔥 Excelente afinidad con tu estrategia actual."
+          : "⚖️ Perfil equilibrado para este sorteo.",
     });
   };
 
@@ -228,11 +249,11 @@ export default function LotoTrackHome() {
                 <span className="text-xs font-bold tracking-widest text-[#E0A422] uppercase">
                   Combinación Sugerida ({juegoActivo.toUpperCase()})
                 </span>
-                <div className="flex flex-wrap gap-2 my-6">
+                <div className="flex flex-wrap gap-2.5 my-6">
                   {combinacionSugerida.map((item, index) => (
                     <div key={index} className="flex flex-col items-center">
                       <div
-                        className={`w-11 h-11 rounded-full ${item.color} flex items-center justify-center text-white font-black text-sm shadow-md border-2 border-neutral-800`}
+                        className={`w-12 h-12 rounded-full ${item.color} flex items-center justify-center text-white font-black text-sm shadow-md border-2 border-neutral-800`}
                       >
                         {item.num}
                       </div>
@@ -290,8 +311,8 @@ export default function LotoTrackHome() {
         <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 shadow-lg">
           <h2 className="text-base font-bold text-white mb-2">Asesor Estadístico en Agencia 🏪 ({juegoActivo.toUpperCase()})</h2>
           <p className="text-xs text-neutral-400 mb-4">
-            Seleccioná de forma táctil los números de la boleta que tenés en la mano para evaluar su afinidad con tu estrategia
-            ({estrategia}).
+            Marcá los números de la boleta de <strong>{juegoActivo.toUpperCase()}</strong> para evaluar su afinidad con tu
+            estrategia ({estrategia}).
           </p>
 
           <div className="flex gap-2 bg-neutral-900 p-1 rounded-xl border border-neutral-800 w-fit mb-4">
@@ -311,10 +332,10 @@ export default function LotoTrackHome() {
           <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl mb-6">
             <div className="flex justify-between items-center mb-3 text-xs">
               <span className="text-neutral-300 font-bold">
-                Marcá los números ({numerosIngresados.length} / {juegoActivo === "telekino" ? 15 : 6}):
+                Marcá los números ({numerosIngresados.length} / {juegoActivo === "telekino" ? 15 : juegoActivo === "quiniela" ? 5 : 6}):
               </span>
               <button onClick={() => setNumerosIngresados([])} className="text-[#E0A422] hover:underline">
-                Limpiar selección
+                Limpiar
               </button>
             </div>
 
