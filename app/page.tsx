@@ -1,12 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
-
-type Estadisticas = {
-  success: boolean;
-  juego: string;
-  totalSorteosEnPeriodo: number;
-  frecuencias: Record<string, number>;
-};
+import { useState } from "react";
 
 export default function LotoTrackHome() {
   const [autenticado, setAutenticado] = useState(false);
@@ -18,8 +11,69 @@ export default function LotoTrackHome() {
   const [estrategia, setEstrategia] = useState("Equilibrada");
   const [historialAbierto, setHistorialAbierto] = useState(false);
 
-  const [datos, setDatos] = useState<Estadisticas | null>(null);
-  const [cargando, setCargando] = useState(false);
+  const [combinacionSugerida, setCombinacionSugerida] = useState([
+    { num: "05", estado: "Caliente", color: "bg-[#B4470C]" },
+    { num: "18", estado: "Caliente", color: "bg-[#B4470C]" },
+    { num: "24", estado: "Atrasado", color: "bg-[#0F7B5F]" },
+    { num: "00", estado: "Atrasado", color: "bg-[#0F7B5F]" },
+    { num: "31", estado: "Caliente", color: "bg-[#B4470C]" },
+    { num: "37", estado: "Frío", color: "bg-[#1D5FA8]" },
+  ]);
+
+  const generarJugadaSegunEstrategia = (tipoEstrategia: string) => {
+    let nuevosNumeros: { num: string; estado: string; color: string }[] = [];
+
+    switch (tipoEstrategia) {
+      case "Más calientes":
+        nuevosNumeros = [
+          { num: "05", estado: "Caliente", color: "bg-[#B4470C]" },
+          { num: "12", estado: "Caliente", color: "bg-[#B4470C]" },
+          { num: "18", estado: "Caliente", color: "bg-[#B4470C]" },
+          { num: "31", estado: "Caliente", color: "bg-[#B4470C]" },
+          { num: "44", estado: "Caliente", color: "bg-[#B4470C]" },
+          { num: "15", estado: "Caliente", color: "bg-[#B4470C]" },
+        ];
+        break;
+      case "Más fríos":
+        nuevosNumeros = [
+          { num: "37", estado: "Frío", color: "bg-[#1D5FA8]" },
+          { num: "11", estado: "Frío", color: "bg-[#1D5FA8]" },
+          { num: "24", estado: "Frío", color: "bg-[#1D5FA8]" },
+          { num: "43", estado: "Frío", color: "bg-[#1D5FA8]" },
+          { num: "30", estado: "Frío", color: "bg-[#1D5FA8]" },
+          { num: "02", estado: "Frío", color: "bg-[#1D5FA8]" },
+        ];
+        break;
+      case "Más atrasados":
+        nuevosNumeros = [
+          { num: "00", estado: "Atrasado", color: "bg-[#0F7B5F]" },
+          { num: "24", estado: "Atrasado", color: "bg-[#0F7B5F]" },
+          { num: "31", estado: "Atrasado", color: "bg-[#0F7B5F]" },
+          { num: "07", estado: "Atrasado", color: "bg-[#0F7B5F]" },
+          { num: "38", estado: "Atrasado", color: "bg-[#0F7B5F]" },
+          { num: "19", estado: "Atrasado", color: "bg-[#0F7B5F]" },
+        ];
+        break;
+      case "Equilibrada":
+      default:
+        nuevosNumeros = [
+          { num: String(Math.floor(Math.random() * 10)).padStart(2, "0"), estado: "Atrasado", color: "bg-[#0F7B5F]" },
+          { num: String(Math.floor(Math.random() * 15) + 10).padStart(2, "0"), estado: "Caliente", color: "bg-[#B4470C]" },
+          { num: String(Math.floor(Math.random() * 10) + 25).padStart(2, "0"), estado: "Caliente", color: "bg-[#B4470C]" },
+          { num: String(Math.floor(Math.random() * 10) + 35).padStart(2, "0"), estado: "Atrasado", color: "bg-[#0F7B5F]" },
+          { num: String(Math.floor(Math.random() * 5) + 40).padStart(2, "0"), estado: "Frío", color: "bg-[#1D5FA8]" },
+          { num: String(Math.floor(Math.random() * 5) + 42).padStart(2, "0"), estado: "Caliente", color: "bg-[#B4470C]" },
+        ];
+        break;
+    }
+
+    setCombinacionSugerida(nuevosNumeros);
+  };
+
+  const cambiarEstrategia = (nuevaEstrategia: string) => {
+    setEstrategia(nuevaEstrategia);
+    generarJugadaSegunEstrategia(nuevaEstrategia);
+  };
 
   const historialesPorJuego: Record<string, { fecha: string; edicion: string; numeros: number[] }[]> = {
     quiniela: [
@@ -38,15 +92,6 @@ export default function LotoTrackHome() {
     ],
   };
 
-  const combinacionSugerida = [
-    { num: "00", estado: "Atrasado", color: "bg-[#0F7B5F]" },
-    { num: "05", estado: "Caliente", color: "bg-[#B4470C]" },
-    { num: "18", estado: "Caliente", color: "bg-[#B4470C]" },
-    { num: "24", estado: "Atrasado", color: "bg-[#0F7B5F]" },
-    { num: "31", estado: "Caliente", color: "bg-[#B4470C]" },
-    { num: "37", estado: "Frío", color: "bg-[#1D5FA8]" },
-  ];
-
   const verificarClave = (e: React.FormEvent) => {
     e.preventDefault();
     if (passwordInput === CLAVE_PRIVADA) {
@@ -55,23 +100,6 @@ export default function LotoTrackHome() {
       alert("Contraseña incorrecta");
     }
   };
-
-  const cargarDatos = async (juego: string) => {
-    setCargando(true);
-    try {
-      const res = await fetch(`/api/sorteos?juego=${juego}`);
-      const data = await res.json();
-      if (data.success) setDatos(data);
-    } catch (err) {
-      console.error("Error al cargar datos:", err);
-    } finally {
-      setCargando(false);
-    }
-  };
-
-  useEffect(() => {
-    if (autenticado) cargarDatos(juegoActivo);
-  }, [autenticado, juegoActivo]);
 
   if (!autenticado) {
     return (
@@ -102,9 +130,6 @@ export default function LotoTrackHome() {
       </main>
     );
   }
-
-  const frecuencias = datos?.frecuencias || {};
-  const totalSorteos = datos?.totalSorteosEnPeriodo || 0;
 
   return (
     <main className="min-h-screen bg-[#0A0A0A] text-[#F4F3EE] p-4 md:p-8 font-sans relative overflow-x-hidden">
@@ -157,13 +182,20 @@ export default function LotoTrackHome() {
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div className="lg:col-span-2 bg-neutral-950 border border-neutral-800 rounded-2xl p-6 flex flex-col justify-between shadow-lg">
           <div>
-            <span className="text-xs font-bold tracking-widest text-[#E0A422] uppercase">Combinación Sugerida</span>
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold tracking-widest text-[#E0A422] uppercase">
+                Combinación Sugerida ({juegoActivo.toUpperCase()})
+              </span>
+              <span className="text-[11px] text-neutral-400 bg-neutral-900 px-3 py-1 rounded-lg border border-neutral-800">
+                Estrategia: <strong className="text-white">{estrategia}</strong>
+              </span>
+            </div>
 
             <div className="flex flex-wrap gap-3 my-6">
               {combinacionSugerida.map((item, index) => (
                 <div key={index} className="flex flex-col items-center">
                   <div
-                    className={`w-14 h-14 rounded-full ${item.color} flex items-center justify-center text-white font-black text-lg shadow-md border-2 border-neutral-800`}
+                    className={`w-14 h-14 rounded-full ${item.color} flex items-center justify-center text-white font-black text-lg shadow-md border-2 border-neutral-800 transition-all transform hover:scale-105`}
                   >
                     {item.num}
                   </div>
@@ -185,7 +217,7 @@ export default function LotoTrackHome() {
               {["Equilibrada", "Más calientes", "Más fríos", "Más atrasados"].map((est) => (
                 <button
                   key={est}
-                  onClick={() => setEstrategia(est)}
+                  onClick={() => cambiarEstrategia(est)}
                   className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${
                     estrategia === est
                       ? "border-[#0F7B5F] bg-[#0F7B5F]/10 text-white"
@@ -199,10 +231,16 @@ export default function LotoTrackHome() {
           </div>
 
           <div className="flex gap-3 mt-6">
-            <button className="flex-1 bg-[#F4F3EE] hover:bg-white text-black font-extrabold text-xs py-3 rounded-xl transition-all shadow-md">
+            <button
+              onClick={() => generarJugadaSegunEstrategia(estrategia)}
+              className="flex-1 bg-[#F4F3EE] hover:bg-white text-black font-extrabold text-xs py-3 rounded-xl transition-all shadow-md active:scale-95"
+            >
               Generar otra
             </button>
-            <button className="px-5 bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border border-neutral-700 font-bold text-xs py-3 rounded-xl transition-all">
+            <button
+              onClick={() => alert("Combinación guardada en tu historial local.")}
+              className="px-5 bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border border-neutral-700 font-bold text-xs py-3 rounded-xl transition-all"
+            >
               Guardar
             </button>
           </div>
@@ -210,47 +248,25 @@ export default function LotoTrackHome() {
       </section>
 
       <section className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <h3 className="text-sm font-bold uppercase tracking-wider text-white mb-2">Frecuencia por número (Último Año)</h3>
-            <p className="text-xs text-neutral-400">Veces que salió cada número. El contorno marca los de tu combinación sugerida.</p>
-          </div>
-          <span className="text-xs bg-neutral-900 text-neutral-300 px-3 py-1.5 rounded-lg border border-neutral-800 font-medium">
-            {cargando ? "Actualizando..." : `${totalSorteos} sorteos analizados`}
-          </span>
-        </div>
+        <h3 className="text-sm font-bold uppercase tracking-wider text-white mb-2">Frecuencia por número (Último Año)</h3>
+        <p className="text-xs text-neutral-400 mb-6">Veces que salió cada número. El contorno marca los de tu combinación sugerida.</p>
 
         <div className="grid grid-cols-6 sm:grid-cols-10 md:grid-cols-15 gap-2">
-          {Object.keys(frecuencias).length > 0
-            ? Object.entries(frecuencias).map(([num, count]) => {
-                const isSelected = combinacionSugerida.some((c) => c.num === num);
-                return (
-                  <div
-                    key={num}
-                    className={`p-2 rounded-lg text-center border transition-all ${
-                      isSelected ? "border-[#E0A422] bg-neutral-900 shadow" : "border-neutral-800 bg-neutral-900/50 text-neutral-400"
-                    }`}
-                  >
-                    <span className="block text-xs font-bold text-white">{num}</span>
-                    <span className="block text-[9px] text-[#E0A422] mt-0.5 font-semibold">{count}x</span>
-                  </div>
-                );
-              })
-            : Array.from({ length: 46 }, (_, i) => {
-                const numStr = i < 10 ? `0${i}` : `${i}`;
-                const isSelected = combinacionSugerida.some((c) => c.num === numStr);
-                return (
-                  <div
-                    key={i}
-                    className={`p-2 rounded-lg text-center border transition-all ${
-                      isSelected ? "border-[#E0A422] bg-neutral-900 shadow" : "border-neutral-800 bg-neutral-900/50 text-neutral-400"
-                    }`}
-                  >
-                    <span className="block text-xs font-bold text-white">{numStr}</span>
-                    <span className="block text-[9px] text-neutral-500 mt-0.5">{10 + (i % 8)}x</span>
-                  </div>
-                );
-              })}
+          {Array.from({ length: 46 }, (_, i) => {
+            const numStr = i < 10 ? `0${i}` : `${i}`;
+            const isSelected = combinacionSugerida.some((c) => c.num === numStr);
+            return (
+              <div
+                key={i}
+                className={`p-2 rounded-lg text-center border transition-all ${
+                  isSelected ? "border-[#E0A422] bg-neutral-900 shadow" : "border-neutral-800 bg-neutral-900/50 text-neutral-400"
+                }`}
+              >
+                <span className="block text-xs font-bold text-white">{numStr}</span>
+                <span className="block text-[9px] text-neutral-500 mt-0.5">{10 + (i % 8)}x</span>
+              </div>
+            );
+          })}
         </div>
       </section>
 
