@@ -1,20 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
-import Scanner from "@/components/Scanner";
 
 type Sorteo = { fecha: string; edicion: string; numeros: number[] };
 type Item = { num: string; estado: string; color: string };
-type Comparativa = {
-  fotoNombre: string;
+type ResultadoAnalisis = {
   juego: string;
-  estrategiaAplicada: string;
-  boletasAnalizadas: {
-    id: string;
-    numeros: number[];
-    score: string;
-    estado: string;
-  }[];
-  recomendada: string;
+  estrategia: string;
+  numeros: string[];
+  afinidad: string;
+  evaluacion: string;
 } | null;
 
 export default function LotoTrackHome() {
@@ -35,18 +29,15 @@ export default function LotoTrackHome() {
   const [estrategia, setEstrategia] = useState("Equilibrada");
   const [historialAbierto, setHistorialAbierto] = useState(false);
 
-  const [analizandoBoletas, setAnalizandoBoletas] = useState(false);
-  const [comparativaBoletas, setComparativaBoletas] = useState<Comparativa>(null);
-  const [scannerAbierto, setScannerAbierto] = useState(false);
+  const [numerosIngresados, setNumerosIngresados] = useState<string[]>([]);
+  const [resultadoAnalisisManual, setResultadoAnalisisManual] = useState<ResultadoAnalisis>(null);
 
   const historialesPorJuego: Record<string, Sorteo[]> = {
     quiniela: [
       { fecha: "28/10/2026", edicion: "Matutina (Mendoza)", numeros: [12, 45, 88, 3, 19] },
-      { fecha: "27/10/2026", edicion: "Nocturna (Mendoza)", numeros: [7, 34, 52, 91, 14] },
     ],
     quini6: [
       { fecha: "25/10/2026", edicion: "Tradicional / Revancha", numeros: [5, 12, 18, 24, 31, 44] },
-      { fecha: "18/10/2026", edicion: "Siempre Sale", numeros: [3, 11, 22, 29, 35, 40] },
     ],
     telekino: [
       { fecha: "25/10/2026", edicion: "Sorteo Oficial", numeros: [1, 3, 5, 8, 11, 13, 15, 17, 19, 21, 23, 25, 2, 6, 10] },
@@ -76,6 +67,8 @@ export default function LotoTrackHome() {
 
   const cambiarJuegoYCalcular = (nuevoJuego: string) => {
     setJuegoActivo(nuevoJuego);
+    setNumerosIngresados([]);
+    setResultadoAnalisisManual(null);
     setCombinacionSugerida(calcularJugadaEstadistica(estrategia, nuevoJuego));
   };
 
@@ -88,34 +81,40 @@ export default function LotoTrackHome() {
     setCombinacionSugerida(calcularJugadaEstadistica(estrategia, juegoActivo));
   };
 
-  const manejarFotoBoletasEnAgencia = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const archivo = e.target.files?.[0];
-    if (!archivo) return;
+  const toggleNumeroManual = (numStr: string) => {
+    if (numerosIngresados.includes(numStr)) {
+      setNumerosIngresados(numerosIngresados.filter((n) => n !== numStr));
+    } else {
+      const limite = juegoActivo === "telekino" ? 15 : 6;
+      if (numerosIngresados.length >= limite) {
+        alert(`Para ${juegoActivo.toUpperCase()} solo podés seleccionar ${limite} números.`);
+        return;
+      }
+      setNumerosIngresados([...numerosIngresados, numStr]);
+    }
+  };
 
-    setAnalizandoBoletas(true);
-    setComparativaBoletas(null);
+  const analizarJugadaManual = () => {
+    const limite = juegoActivo === "telekino" ? 15 : 6;
+    if (numerosIngresados.length < limite) {
+      alert(`Por favor seleccioná los ${limite} números de tu boleta.`);
+      return;
+    }
 
-    setTimeout(() => {
-      setAnalizandoBoletas(false);
-      const esTelekino = juegoActivo === "telekino";
-      const numsA = esTelekino
-        ? [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 2, 8, 14]
-        : [5, 12, 18, 24, 31, 44];
-      const numsB = esTelekino
-        ? [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 1, 9, 15]
-        : [2, 14, 27, 33, 40, 45];
+    const calientesEjemplo = ["05", "12", "18", "24", "31", "44", "01", "03"];
+    const aciertosCalientes = numerosIngresados.filter((n) => calientesEjemplo.includes(n)).length;
+    const afinidad = Math.min(98, Math.max(40, aciertosCalientes * 15 + 35));
 
-      setComparativaBoletas({
-        fotoNombre: archivo.name,
-        juego: juegoActivo.toUpperCase(),
-        estrategiaAplicada: estrategia,
-        boletasAnalizadas: [
-          { id: "Cartón / Boleta 1", numeros: numsA, score: "91%", estado: "🔥 Alta afinidad estadística con tu selección" },
-          { id: "Cartón / Boleta 2", numeros: numsB, score: "72%", estado: "⚖️ Perfil equilibrado estándar" },
-        ],
-        recomendada: "Cartón / Boleta 1",
-      });
-    }, 2000);
+    setResultadoAnalisisManual({
+      juego: juegoActivo.toUpperCase(),
+      estrategia: estrategia,
+      numeros: [...numerosIngresados].sort(),
+      afinidad: `${afinidad}%`,
+      evaluacion:
+        afinidad > 75
+          ? "🔥 Excelente afinidad con tu estrategia actual (Muchos números frecuentes)."
+          : "⚖️ Perfil moderado / equilibrado para este sorteo.",
+    });
   };
 
   const verificarClave = (e: React.FormEvent) => {
@@ -157,6 +156,8 @@ export default function LotoTrackHome() {
       </main>
     );
   }
+
+  const maxTotalBolillas = juegoActivo === "telekino" ? 25 : juegoActivo === "quiniela" ? 99 : 45;
 
   return (
     <main className="min-h-screen bg-[#0A0A0A] text-[#F4F3EE] p-4 md:p-8 font-sans relative overflow-x-hidden">
@@ -275,9 +276,6 @@ export default function LotoTrackHome() {
         <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 shadow-lg">
           <h2 className="text-base font-bold text-white mb-2">Gestión de Boletos Guardados</h2>
           <p className="text-xs text-neutral-400 mb-4">Administrá tus jugadas favoritas.</p>
-          <div className="p-4 bg-neutral-900 rounded-xl border border-neutral-800 text-xs text-neutral-300">
-            No hay boletos guardados en esta sesión. Usá el asesor en agencia para fotografiar jugadas.
-          </div>
         </div>
       )}
 
@@ -292,110 +290,83 @@ export default function LotoTrackHome() {
         <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 shadow-lg">
           <h2 className="text-base font-bold text-white mb-2">Asesor Estadístico en Agencia 🏪 ({juegoActivo.toUpperCase()})</h2>
           <p className="text-xs text-neutral-400 mb-4">
-            ¿Estás en la agencia y querés saber cuál boleta comprar? Sácale una foto a las opciones impresas y Loto Track te
-            dirá cuál tiene más afinidad con tu estrategia actual ({estrategia}).
+            Seleccioná de forma táctil los números de la boleta que tenés en la mano para evaluar su afinidad con tu estrategia
+            ({estrategia}).
           </p>
 
-          <div className="bg-neutral-900 border-2 border-dashed border-neutral-700 rounded-xl p-8 flex flex-col items-center justify-center text-center mb-6">
-            <span className="text-4xl mb-3">📸</span>
-            <p className="text-xs text-neutral-300 font-medium mb-4">
-              Fotografía las opciones de boletas sobre el mostrador de la agencia
-            </p>
-
-            <div className="flex gap-2">
-              <label className="bg-[#0F7B5F] hover:bg-[#0F7B5F]/80 text-white font-bold text-xs px-6 py-3 rounded-xl cursor-pointer transition-all shadow">
-                {analizandoBoletas ? "Procesando y cruzando estadísticas..." : "🎯 Fotografiar Boletas y Analizar"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={manejarFotoBoletasEnAgencia}
-                  className="hidden"
-                />
-              </label>
+          <div className="flex gap-2 bg-neutral-900 p-1 rounded-xl border border-neutral-800 w-fit mb-4">
+            {["quiniela", "quini6", "telekino"].map((j) => (
               <button
-                onClick={() => setScannerAbierto(true)}
-                className="bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs px-6 py-3 rounded-xl border border-neutral-700 transition-all shadow"
+                key={j}
+                onClick={() => cambiarJuegoYCalcular(j)}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg capitalize transition-all ${
+                  juegoActivo === j ? "bg-[#F4F3EE] text-black" : "text-neutral-400 hover:text-white"
+                }`}
               >
-                📷 Escanear código
+                {j}
               </button>
-            </div>
+            ))}
           </div>
 
-          {comparativaBoletas && (
-            <div className="space-y-4 animate-in fade-in">
-              <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl">
-                <div className="flex justify-between text-xs text-[#E0A422] font-bold mb-2">
-                  <span>RESULTADO DEL ANÁLISIS EN AGENCIA</span>
-                  <span>Estrategia: {comparativaBoletas.estrategiaAplicada}</span>
-                </div>
-                <p className="text-xs text-neutral-300 mb-4">
-                  Imagen procesada: <strong>{comparativaBoletas.fotoNombre}</strong>
-                </p>
+          <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl mb-6">
+            <div className="flex justify-between items-center mb-3 text-xs">
+              <span className="text-neutral-300 font-bold">
+                Marcá los números ({numerosIngresados.length} / {juegoActivo === "telekino" ? 15 : 6}):
+              </span>
+              <button onClick={() => setNumerosIngresados([])} className="text-[#E0A422] hover:underline">
+                Limpiar selección
+              </button>
+            </div>
 
-                <div className="space-y-3">
-                  {comparativaBoletas.boletasAnalizadas.map((bol, i) => {
-                    const esLaRecomendada = bol.id === comparativaBoletas.recomendada;
-                    return (
-                      <div
-                        key={i}
-                        className={`p-4 rounded-xl border transition-all ${
-                          esLaRecomendada ? "border-[#E0A422] bg-[#E0A422]/10 shadow-md" : "border-neutral-800 bg-neutral-950"
-                        }`}
-                      >
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-xs font-bold text-white flex items-center gap-2">
-                            {bol.id}{" "}
-                            {esLaRecomendada && (
-                              <span className="bg-[#E0A422] text-black text-[10px] px-2 py-0.5 rounded-full font-black">
-                                ⭐ RECOMENDADA PARA COMPRAR
-                              </span>
-                            )}
-                          </span>
-                          <span className="text-xs font-mono font-bold text-[#0F7B5F]">Afinidad: {bol.score}</span>
-                        </div>
-                        <div className="flex gap-2 mb-2 flex-wrap">
-                          {bol.numeros.map((n, idx) => (
-                            <span
-                              key={idx}
-                              className="bg-neutral-900 border border-neutral-700 text-white font-bold text-xs px-2.5 py-1 rounded-md"
-                            >
-                              {n < 10 ? `0${n}` : n}
-                            </span>
-                          ))}
-                        </div>
-                        <p className="text-[11px] text-neutral-400">{bol.estado}</p>
-                      </div>
-                    );
-                  })}
-                </div>
+            <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 max-h-60 overflow-y-auto p-1">
+              {Array.from({ length: maxTotalBolillas }, (_, i) => {
+                const n = i + 1;
+                const numStr = n < 10 ? `0${n}` : `${n}`;
+                const seleccionado = numerosIngresados.includes(numStr);
+                return (
+                  <button
+                    key={i}
+                    onClick={() => toggleNumeroManual(numStr)}
+                    className={`py-2 rounded-lg text-xs font-bold border transition-all ${
+                      seleccionado
+                        ? "bg-[#0F7B5F] text-white border-[#0F7B5F] shadow"
+                        : "bg-neutral-950 text-neutral-400 border-neutral-800 hover:border-neutral-600"
+                    }`}
+                  >
+                    {numStr}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={analizarJugadaManual}
+              className="w-full mt-4 bg-[#0F7B5F] hover:bg-[#0F7B5F]/80 text-white font-bold text-xs py-3 rounded-xl transition-all shadow"
+            >
+              🔍 Evaluar Jugada Seleccionada
+            </button>
+          </div>
+
+          {resultadoAnalisisManual && (
+            <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl space-y-3 animate-in fade-in">
+              <div className="flex justify-between text-xs text-[#E0A422] font-bold">
+                <span>EVALUACIÓN: {resultadoAnalisisManual.juego}</span>
+                <span>Afinidad: {resultadoAnalisisManual.afinidad}</span>
               </div>
+              <div className="flex gap-1.5 flex-wrap">
+                {resultadoAnalisisManual.numeros.map((n, idx) => (
+                  <span
+                    key={idx}
+                    className="bg-neutral-950 border border-neutral-700 text-white font-bold text-xs px-2.5 py-1 rounded-md"
+                  >
+                    {n}
+                  </span>
+                ))}
+              </div>
+              <p className="text-xs text-white font-medium">{resultadoAnalisisManual.evaluacion}</p>
             </div>
           )}
         </div>
-      )}
-
-      {scannerAbierto && (
-        <Scanner
-          onScan={(text) => {
-            setScannerAbierto(false);
-            setAnalizandoBoletas(true);
-            setComparativaBoletas(null);
-            setTimeout(() => {
-              setAnalizandoBoletas(false);
-              setComparativaBoletas({
-                fotoNombre: `Escaneo: ${text}`,
-                juego: juegoActivo.toUpperCase(),
-                estrategiaAplicada: estrategia,
-                boletasAnalizadas: [
-                  { id: "Boleta escaneada", numeros: [5, 12, 18, 24, 31, 44], score: "88%", estado: "Código detectado correctamente" },
-                ],
-                recomendada: "Boleta escaneada",
-              });
-            }, 1200);
-          }}
-          onClose={() => setScannerAbierto(false)}
-        />
       )}
     </main>
   );
