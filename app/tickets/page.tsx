@@ -30,7 +30,7 @@ export default function TicketsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6">
       <h1 className="text-2xl font-bold">Boletos</h1>
 
       <form

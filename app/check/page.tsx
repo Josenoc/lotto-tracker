@@ -24,7 +24,7 @@ export default function CheckPage() {
       : [];
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6">
       <h1 className="text-2xl font-bold">Verificador</h1>
 
       <div className="grid gap-4 sm:grid-cols-2">

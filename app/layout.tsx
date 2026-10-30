@@ -14,21 +14,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Rastreador de Lotería",
-  description: "Controla tus boletos, sorteos y premios",
+  title: "Loto Track",
+  description: "Análisis estadístico de loterías",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="en"
+      lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col bg-[#0A0A0A] text-[#F4F3EE]">
         <Nav />
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
-          {children}
-        </main>
+        {children}
       </body>
     </html>
   );
