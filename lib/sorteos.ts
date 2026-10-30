@@ -13,15 +13,15 @@ export const SORTEOS: Sorteo[] = [
 
 export const TOTAL_NUMEROS = 46;
 
-export function sorteosDe(juego: string): Sorteo[] {
-  return SORTEOS.filter((s) => s.juego === juego).sort((a, b) =>
+export function sorteosDe(juego: string, draws: Sorteo[] = SORTEOS): Sorteo[] {
+  return draws.filter((s) => s.juego === juego).sort((a, b) =>
     a.fecha < b.fecha ? 1 : -1
   );
 }
 
-export function frecuencia(juego: string): number[] {
+export function frecuencia(juego: string, draws: Sorteo[] = SORTEOS): number[] {
   const counts = Array(TOTAL_NUMEROS).fill(0);
-  for (const s of sorteosDe(juego)) {
+  for (const s of sorteosDe(juego, draws)) {
     for (const n of s.numeros) {
       if (n >= 0 && n < TOTAL_NUMEROS) counts[n]++;
     }
@@ -29,31 +29,30 @@ export function frecuencia(juego: string): number[] {
   return counts;
 }
 
-export function ultimoSorteo(juego: string): Sorteo | undefined {
-  return sorteosDe(juego)[0];
+export function ultimoSorteo(juego: string, draws: Sorteo[] = SORTEOS): Sorteo | undefined {
+  return sorteosDe(juego, draws)[0];
 }
 
-export function estadoNumero(juego: string, num: number): string {
-  const draws = sorteosDe(juego);
-  if (draws.length === 0) return "Sin datos";
-  const counts = frecuencia(juego);
+export function estadoNumero(juego: string, num: number, draws: Sorteo[] = SORTEOS): string {
+  const sorted = sorteosDe(juego, draws);
+  if (sorted.length === 0) return "Sin datos";
+  const counts = frecuencia(juego, draws);
   const c = counts[num];
   if (c === 0) return "Frío";
-  const last = draws.find((s) => s.numeros.includes(num));
-  if (last && last.fecha === draws[0].fecha) return "Caliente";
+  const last = sorted.find((s) => s.numeros.includes(num));
+  if (last && last.fecha === sorted[0].fecha) return "Caliente";
   return "Atrasado";
 }
 
-export function sugerir(juego: string, estrategia: string): number[] {
-  const draws = sorteosDe(juego);
-  if (draws.length === 0) return [];
-  const counts = frecuencia(juego);
+export function sugerir(juego: string, estrategia: string, draws: Sorteo[] = SORTEOS): number[] {
+  const sorted = sorteosDe(juego, draws);
+  if (sorted.length === 0) return [];
+  const counts = frecuencia(juego, draws);
   const indexed = counts.map((c, n) => ({ n, c }));
   const byCountDesc = [...indexed].sort((a, b) => b.c - a.c || a.n - b.n);
   const byCountAsc = [...indexed].sort((a, b) => a.c - b.c || a.n - b.n);
-  const lastDate = draws[0].fecha;
   const atrasados = [...indexed]
-    .filter((x) => !draws[0].numeros.includes(x.n))
+    .filter((x) => !sorted[0].numeros.includes(x.n))
     .sort((a, b) => a.c - b.c || a.n - b.n);
 
   let chosen: number[] = [];

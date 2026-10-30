@@ -1,5 +1,6 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { Sorteo } from "@/lib/sorteos";
 import {
   SORTEOS,
   TOTAL_NUMEROS,
@@ -12,18 +13,35 @@ import {
 export default function LotoTrackHome() {
   const [juegoActivo, setJuegoActivo] = useState("quini6");
   const [estrategia, setEstrategia] = useState("Equilibrada");
+  const [sorteos, setSorteos] = useState<Sorteo[]>(SORTEOS);
 
-  const draws = SORTEOS.filter((s) => s.juego === juegoActivo);
-  const counts = useMemo(() => frecuencia(juegoActivo), [juegoActivo]);
+  useEffect(() => {
+    let active = true;
+    fetch("/api/sorteos")
+      .then((r) => r.json())
+      .then((data: Sorteo[]) => {
+        if (active && Array.isArray(data)) setSorteos(data);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const draws = useMemo(
+    () => sorteos.filter((s) => s.juego === juegoActivo),
+    [sorteos, juegoActivo]
+  );
+  const counts = useMemo(() => frecuencia(juegoActivo, sorteos), [juegoActivo, sorteos]);
   const sugeridos = useMemo(
-    () => sugerir(juegoActivo, estrategia),
-    [juegoActivo, estrategia]
+    () => sugerir(juegoActivo, estrategia, sorteos),
+    [juegoActivo, estrategia, sorteos]
   );
 
   const combinacionSugerida = sugeridos.map((n) => ({
     num: n < 10 ? `0${n}` : `${n}`,
-    estado: estadoNumero(juegoActivo, n),
-    color: colorEstado(estadoNumero(juegoActivo, n)),
+    estado: estadoNumero(juegoActivo, n, sorteos),
+    color: colorEstado(estadoNumero(juegoActivo, n, sorteos)),
   }));
 
   const resumen = useMemo(() => {
